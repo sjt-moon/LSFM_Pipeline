@@ -1,13 +1,11 @@
 import menpo3d
-import datetime
+import numpy as np
 import scipy.sparse as sp
 from menpo.shape import TriMesh
 from menpo.transform import Translation, UniformScale
 from menpo3d.vtkutils import trimesh_to_vtk, VTKClosestPointLocator
-import numpy as np
 
-source_mesh = menpo3d.io.import_mesh('../3DMM/1/1_0001.obj')
-target_mesh = menpo3d.io.import_mesh('../3DMM/1/1_0002.obj')
+from helper import math_helper
 
 
 class NonRigidIcp:
@@ -65,12 +63,14 @@ class NonRigidIcp:
         closest_points_on_target = VTKClosestPointLocator(target_vtk)
 
         for i, (alpha, gamma) in enumerate(zip(self.stiffness_weights, self.data_weights), 1):
-            transformed_mesh = self._non_rigid_icp_iter(v_i, source, target, closest_points_on_target,
+            if self.verbose:
+                print("Epoch " + str(i) + " with stiffness " + str(alpha))
+            transformed_mesh = self.non_rigid_icp_iter(v_i, source, target, closest_points_on_target,
                                                         M_kron_G, alpha, gamma)
 
         return transformed_mesh
 
-    def _non_rigid_icp_iter(self, v_i, source, target, closest_points_on_target, M_kron_G, alpha, gamma):
+    def non_rigid_icp_iter(self, v_i, source, target, closest_points_on_target, M_kron_G, alpha, gamma):
         """
         Non-rigid icp for each iteration.
 
@@ -148,7 +148,7 @@ class NonRigidIcp:
 
             A = sp.vstack(to_stack_A).tocsr()
             B = sp.vstack(to_stack_B).tocsr()
-            X = self._solve(A, B)
+            X = math_helper.solve(A, B)
 
             # deform template
             v_i = D.dot(X)
@@ -212,24 +212,3 @@ class NonRigidIcp:
         scaling_model = prepare.pseudoinverse()
 
         return source, target, scaling_model
-
-    @staticmethod
-    def _solve(A, B):
-        """
-        Solve Ax = B.
-
-        Parameters:
-            A (scipy.sparse.csr.csr_matrix / np.matrix): sparse matrix
-            B (scipy.sparse.csr.csr_matrix / np.matrix): sparse matrix
-
-        Returns:
-            x (scipy.sparse.csr.csr_matrix / np.matrix): answer for linear equation Ax = B
-        """
-        print(datetime.datetime.now())
-        a = A.todense() if callable(getattr(A, "todense", None)) else A
-        b = B.todense() if callable(getattr(B, "todense", None)) else B
-        # inverse(A.T * A)
-        a_T_a_I = np.linalg.inv(np.add(np.matmul(a.T, a), 0.5 * np.eye(a.shape[1])))
-        x = np.matmul(np.matmul(a_T_a_I, a.T), b)
-        print(datetime.datetime.now())
-        return x
