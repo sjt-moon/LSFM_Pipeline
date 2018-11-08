@@ -18,13 +18,14 @@ class NonRigidIcp:
         eps (float): training precision
         verbose (boolean): whether to print out training info
     """
-    def __init__(self, stiffness_weights=None, data_weights=None, eps=1e-3, verbose=True):
+    def __init__(self, stiffness_weights=None, data_weights=None, max_iter=10, eps=1e-3, verbose=True):
         """
         Init non-rigid icp model.
 
         Parameters:
             stiffness_weights (int array or None): stiffness for each iteration
             data_weights (int array or None): data weights for each iteration
+            max_iter (int): max number of iterations for each stiffness
             eps (float): training precision
             verbose (boolean): whether to print out training info
         """
@@ -32,6 +33,7 @@ class NonRigidIcp:
         self.DEFAULT_DATA_WEIGHTS = [None] * len(self.DEFAULT_STIFFNESS_WEIGHTS)
         self.stiffness_weights = self.DEFAULT_STIFFNESS_WEIGHTS if stiffness_weights is None else stiffness_weights
         self.data_weights = self.DEFAULT_DATA_WEIGHTS if data_weights is None else data_weights
+        self.max_iter = max_iter
         self.eps = eps
         self.verbose = verbose
 
@@ -65,12 +67,12 @@ class NonRigidIcp:
         for i, (alpha, gamma) in enumerate(zip(self.stiffness_weights, self.data_weights), 1):
             if self.verbose:
                 print("Epoch " + str(i) + " with stiffness " + str(alpha))
-            transformed_mesh = self.non_rigid_icp_iter(v_i, source, target, closest_points_on_target,
+            transformed_mesh = self._non_rigid_icp_iter(v_i, source, target, closest_points_on_target,
                                                         M_kron_G, alpha, gamma)
 
         return transformed_mesh
 
-    def non_rigid_icp_iter(self, v_i, source, target, closest_points_on_target, M_kron_G, alpha, gamma):
+    def _non_rigid_icp_iter(self, v_i, source, target, closest_points_on_target, M_kron_G, alpha, gamma):
         """
         Non-rigid icp for each iteration.
 
@@ -104,7 +106,8 @@ class NonRigidIcp:
 
         # start iteration
         iter_ = 0
-        while True:
+        current_instance = source.copy()
+        while iter_ < self.max_iter:
             iter_ += 1
             # find nearest neighbour and the normals
             U, tri_indices = closest_points_on_target(v_i)
