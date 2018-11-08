@@ -67,7 +67,7 @@ class NonRigidIcp:
         for i, (alpha, gamma) in enumerate(zip(self.stiffness_weights, self.data_weights), 1):
             if self.verbose:
                 print("Epoch " + str(i) + " with stiffness " + str(alpha))
-            transformed_mesh = self._non_rigid_icp_iter(v_i, source, target, closest_points_on_target,
+            transformed_mesh = self._non_rigid_icp_iter(v_i, transformed_mesh, target, closest_points_on_target,
                                                         M_kron_G, alpha, gamma)
 
         return transformed_mesh
