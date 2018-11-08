@@ -151,7 +151,7 @@ class NonRigidIcp:
             X = math_helper.solve(A, B)
 
             # deform template
-            v_i = D.dot(X)
+            v_i = np.array(D.dot(X))
 
             err = np.linalg.norm(X_prev - X, ord='fro')
             regularized_err = err / np.sqrt(np.size(X_prev))
