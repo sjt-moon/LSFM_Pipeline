@@ -6,6 +6,9 @@ from menpo.model import PCAModel
 
 
 class Pipeline:
+    """
+    LSFM Pipeline.
+    """
     def __init__(self, base_model_path, stiffness_weights=None, data_weights=None, max_iter=10, eps=1e-3, verbose=True):
         self.target = loader.get_mean_model(base_model_path)
         self.verbose = verbose
