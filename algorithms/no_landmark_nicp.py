@@ -2,7 +2,6 @@ import menpo3d
 import numpy as np
 import scipy.sparse as sp
 from menpo.shape import TriMesh
-from menpo.transform import Translation, UniformScale
 from menpo3d.vtkutils import trimesh_to_vtk, VTKClosestPointLocator
 
 from helper import math_helper
@@ -48,7 +47,6 @@ class NonRigidIcp:
         Returns:
             transformed_mesh (menpo.shape.mesh.base.TriMesh): transformed source mesh
         """
-        source, target, scaling_model = self._rescale(source, target)
         n_dims = source.n_dims
         transformed_mesh = source
 
@@ -187,29 +185,3 @@ class NonRigidIcp:
         col = unique_edge_pairs.T.ravel()
         data = np.hstack((-1 * np.ones(m), np.ones(m)))
         return sp.coo_matrix((data, (row, col))), unique_edge_pairs
-
-    @staticmethod
-    def _rescale(source, target):
-        """
-        Rescale source and target meshes.
-
-        Parameters:
-            source (menpo.shape.mesh.base.TriMesh): source mesh to be transformed
-            target (menpo.shape.mesh.base.TriMesh): target mesh as the base
-
-        Returns:
-            source (menpo.shape.mesh.base.TriMesh): rescaled source
-            target (menpo.shape.mesh.base.TriMesh): rescaled target mesh
-            scaling_model (menpo.transform.homogeneous.similarity.Similarity): scaling model
-        """
-        tr = Translation(-1 * source.centre())
-        sc = UniformScale(1.0 / np.sqrt(sum(source.range() ** 2)), 3)
-        prepare = tr.compose_before(sc)
-
-        source = prepare.apply(source)
-        target = prepare.apply(target)
-
-        # store how to undo the similarity transform
-        scaling_model = prepare.pseudoinverse()
-
-        return source, target, scaling_model
