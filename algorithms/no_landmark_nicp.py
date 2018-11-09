@@ -101,74 +101,48 @@ class NonRigidIcp:
         ones = np.ones(n)
         alpha_M_kron_G = alpha * M_kron_G
 
-        # start iteration
-        iter_ = 0
-        while iter_ < self.max_iter:
-            iter_ += 1
-            # find nearest neighbour and the normals
-            U, tri_indices = closest_points_on_target(v_i)
+        # find nearest neighbour and the normals
+        U, tri_indices = closest_points_on_target(v_i)
 
-            # ---- WEIGHTS ----
-            # 1.  Edges
-            # Are any of the corresponding tris on the edge of the target?
-            # Where they are we return a false weight (we *don't* want to
-            # include these points in the solve)
-            w_i_e = np.in1d(tri_indices, edge_tris, invert=True)
+        # ---- WEIGHTS ----
+        # 1.  Edges
+        # Are any of the corresponding tris on the edge of the target?
+        # Where they are we return a false weight (we *don't* want to
+        # include these points in the solve)
+        w_i_e = np.in1d(tri_indices, edge_tris, invert=True)
 
-            # 2. Normals
-            # Calculate the normals of the current v_i
-            v_i_tm = TriMesh(v_i, trilist=trilist)
-            v_i_n = v_i_tm.vertex_normals()
-            # Extract the corresponding normals from the target
-            u_i_n = target_tri_normals[tri_indices]
-            # If the dot of the normals is lt 0.9 don't contrib to deformation
-            w_i_n = (u_i_n * v_i_n).sum(axis=1) > 0.9
+        # 2. Normals
+        # Calculate the normals of the current v_i
+        v_i_tm = TriMesh(v_i, trilist=trilist)
+        v_i_n = v_i_tm.vertex_normals()
+        # Extract the corresponding normals from the target
+        u_i_n = target_tri_normals[tri_indices]
+        # If the dot of the normals is lt 0.9 don't contrib to deformation
+        w_i_n = (u_i_n * v_i_n).sum(axis=1) > 0.9
 
-            # Form the overall w_i from the normals, edge case
-            # for now disable the edge constraint (it was noisy anyway)
-            w_i = w_i_n
+        # Form the overall w_i from the normals, edge case
+        # for now disable the edge constraint (it was noisy anyway)
+        w_i = w_i_n
 
-            prop_w_i = (n - sum(w_i) * 1.0) / n
-            prop_w_i_n = (n - sum(w_i_n) * 1.0) / n
-            prop_w_i_e = (n - sum(w_i_e) * 1.0) / n
+        if gamma is not None:
+            w_i *= gamma
 
-            if gamma is not None:
-                w_i *= gamma
+        # Build the sparse diagonal weight matrix
+        W = sp.diags(np.array(w_i).astype(np.float)[None, :], [0])
 
-            # Build the sparse diagonal weight matrix
-            W = sp.diags(np.array(w_i).astype(np.float)[None, :], [0])
+        data = np.hstack((v_i.ravel(), ones))
+        D = sp.coo_matrix((data, (row, col)))
 
-            data = np.hstack((v_i.ravel(), ones))
-            D = sp.coo_matrix((data, (row, col)))
+        to_stack_A = [alpha_M_kron_G, W.dot(D)]
+        to_stack_B = [np.zeros((alpha_M_kron_G.shape[0], n_dims)),
+                      U * w_i[:, None]]  # nullify nearest points by w_i
 
-            to_stack_A = [alpha_M_kron_G, W.dot(D)]
-            to_stack_B = [np.zeros((alpha_M_kron_G.shape[0], n_dims)),
-                          U * w_i[:, None]]  # nullify nearest points by w_i
+        A = sp.vstack(to_stack_A).tocsr()
+        B = sp.vstack(to_stack_B).tocsr()
+        X = self.solve(A, B)
 
-            A = sp.vstack(to_stack_A).tocsr()
-            B = sp.vstack(to_stack_B).tocsr()
-            X = math_helper.solve(A, B)
-
-            # deform template
-            v_i = np.array(D.dot(X))
-
-            err = np.linalg.norm(X_prev - X, ord='fro')
-            regularized_err = err / np.sqrt(np.size(X_prev))
-
-            X_prev = X
-
-            if self.verbose:
-                info = ' - {} regularized_error: {:.3f}  ' \
-                       'total: {:.0%}  norms: {:.0%}  ' \
-                       'edges: {:.0%}'.format(iter_,
-                                              regularized_err,
-                                              prop_w_i,
-                                              prop_w_i_n,
-                                              prop_w_i_e)
-                print(info)
-
-            if regularized_err < self.eps:
-                break
+        # deform template
+        v_i = np.array(D.dot(X))
 
         current_instance = source.copy()
         current_instance.points = v_i.copy()
@@ -185,3 +159,21 @@ class NonRigidIcp:
         col = unique_edge_pairs.T.ravel()
         data = np.hstack((-1 * np.ones(m), np.ones(m)))
         return sp.coo_matrix((data, (row, col))), unique_edge_pairs
+
+    def solve(self, A, B):
+        m, n, k = A.shape[0], A.shape[1], B.shape[1]
+        X, M = np.zeros((n, k)), np.zeros((n, k))
+        for iter_ in range(5):
+            L = np.dot(A, X) - B
+            print("iter: " + str(iter_))
+            print("loss: " + str(np.sum(L**2)))
+            M = 0.5 * M + 0.5 * np.dot(A.T, np.dot(A, X - 0.5 * M) - B)
+            X -= M
+        return X
+
+    def solve2(self, A, B):
+        m, n, k = A.shape[0], A.shape[1], B.shape[1]
+        X = np.zeros((n, k))
+        for iter_ in range(10):
+            X -= np.dot(A.T, np.dot(A, X) - B)
+        return X
