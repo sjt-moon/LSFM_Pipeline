@@ -19,7 +19,7 @@ def get_mean_model(model_path):
     Returns:
         mean_mesh (menpo.shape.mesh.base.TriMesh): mean mesh model
     """
-    return _get_mean_model(load_BFM_scaled(model_path))
+    return rescale.rescale(_get_mean_model(_load_BFM(model_path)))
 
 
 def get_mesh(mesh_path):
@@ -46,31 +46,6 @@ def _get_mesh(mesh_path):
         mesh object (menpo.shape.mesh.base.TriMesh): mean mesh model
     """
     return menpo3d.io.import_mesh(mesh_path)
-
-
-def load_BFM_scaled(model_path):
-    """
-    Load scaled BFM 3DMM model.
-
-    Parameters:
-        model_path (string): path to BFM model.
-
-    Returns:
-        model: (nver = 53215, ntri = 105840). nver: number of vertices. ntri: number of triangles.
-            'shapeMU': [3*nver, 1]
-            'shapePC': [3*nver, 199]
-            'shapeEV': [199, 1]
-            'expMU': [3*nver, 1]
-            'expPC': [3*nver, 29]
-            'expEV': [29, 1]
-            'texMU': [3*nver, 1]
-            'texPC': [3*nver, 199]
-            'texEV': [199, 1]
-            'tri': [ntri, 3] (start from 1, should sub 1 in python and c++)
-            'tri_mouth': [114, 3] (start from 1, as a supplement to mouth triangles)
-            'kpt_ind': [68,] (start from 1)
-    """
-    return rescale.rescale(_load_BFM(model_path))
 
 
 def _load_BFM(model_path):
