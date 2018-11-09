@@ -50,7 +50,6 @@ class NonRigidIcp:
         """
         source, target, scaling_model = self._rescale(source, target)
         n_dims = source.n_dims
-        v_i = source.points
         transformed_mesh = source
 
         M, unique_edge_pairs = self._node_arc_incidence_matrix(source)
@@ -67,17 +66,16 @@ class NonRigidIcp:
         for i, (alpha, gamma) in enumerate(zip(self.stiffness_weights, self.data_weights), 1):
             if self.verbose:
                 print("Epoch " + str(i) + " with stiffness " + str(alpha))
-            transformed_mesh = self._non_rigid_icp_iter(v_i, transformed_mesh, target, closest_points_on_target,
+            transformed_mesh = self._non_rigid_icp_iter(transformed_mesh, target, closest_points_on_target,
                                                         M_kron_G, alpha, gamma)
 
         return transformed_mesh
 
-    def _non_rigid_icp_iter(self, v_i, source, target, closest_points_on_target, M_kron_G, alpha, gamma):
+    def _non_rigid_icp_iter(self, source, target, closest_points_on_target, M_kron_G, alpha, gamma):
         """
         Non-rigid icp for each iteration.
 
         Parameters:
-            v_i (numpy.ndarray): current transformed points
             source (menpo.shape.mesh.base.TriMesh): original source mesh to be transformed
             target (menpo.shape.mesh.base.TriMesh): target mesh as the base
             closest_points_on_target (menpo3d.vtkutils.VTKClosestPointLocator): octree for finding nearest neighbor
@@ -93,6 +91,7 @@ class NonRigidIcp:
         h_dims = n_dims + 1
         n = source.points.shape[0]
         X_prev = np.tile(np.zeros((n_dims, h_dims)), n).T
+        v_i = source.points
         edge_tris = source.boundary_tri_index()
         trilist = source.trilist
         target_tri_normals = target.tri_normals()
@@ -106,7 +105,6 @@ class NonRigidIcp:
 
         # start iteration
         iter_ = 0
-        current_instance = source.copy()
         while iter_ < self.max_iter:
             iter_ += 1
             # find nearest neighbour and the normals
@@ -161,9 +159,6 @@ class NonRigidIcp:
 
             X_prev = X
 
-            current_instance = source.copy()
-            current_instance.points = v_i.copy()
-
             if self.verbose:
                 info = ' - {} regularized_error: {:.3f}  ' \
                        'total: {:.0%}  norms: {:.0%}  ' \
@@ -176,6 +171,9 @@ class NonRigidIcp:
 
             if regularized_err < self.eps:
                 break
+
+        current_instance = source.copy()
+        current_instance.points = v_i.copy()
 
         return current_instance
 
