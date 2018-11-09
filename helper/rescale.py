@@ -14,14 +14,14 @@ def rescale(mesh, center=CENTER, var=VAR):
 
     Parameters:
         mesh (menpo.shape.mesh.base.TriMesh): mesh to be rescaled
-        center (list of 3 floats): center on 3 dimensions
-        var (list of 3 floats): variance on 3 dimensions
+        center (numpy.array of 3 floats): center on 3 dimensions
+        var (numpy.array of 3 floats): variance on 3 dimensions
 
     Returns:
         mesh (menpo.shape.mesh.base.TriMesh): rescaled source
     """
     tr = Translation(center)
-    sc = UniformScale(sum(var ** 2) / sum(mesh.range() ** 2), 3)
+    sc = UniformScale(np.mean(var / mesh.range()), 3)
     prepare = tr.compose_after(sc)
 
     return prepare.apply(mesh)
