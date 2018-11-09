@@ -137,8 +137,8 @@ class NonRigidIcp:
         to_stack_B = [np.zeros((alpha_M_kron_G.shape[0], n_dims)),
                       U * w_i[:, None]]  # nullify nearest points by w_i
 
-        A = sp.vstack(to_stack_A).tocsr()
-        B = sp.vstack(to_stack_B).tocsr()
+        A = sp.vstack(to_stack_A).tocsr().todense()
+        B = sp.vstack(to_stack_B).tocsr().todense()
         X = self.solve(A, B)
 
         # deform template
@@ -161,6 +161,8 @@ class NonRigidIcp:
         return sp.coo_matrix((data, (row, col))), unique_edge_pairs
 
     def solve(self, A, B):
+        print(A.shape)
+        print(B.shape)
         m, n, k = A.shape[0], A.shape[1], B.shape[1]
         X, M = np.zeros((n, k)), np.zeros((n, k))
         for iter_ in range(5):
