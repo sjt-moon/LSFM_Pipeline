@@ -146,8 +146,10 @@ class NonRigidIcp:
                           U * w_i[:, None]]  # nullify nearest points by w_i
 
             A = np.array(sp.vstack(to_stack_A).tocsr().todense())
-            B = np.array(sp.vstack(to_stack_B).tocsr().todens())
+            B = np.array(sp.vstack(to_stack_B).tocsr().todense())
+
             X = math_helper.solve(np.dot(A.T, A), np.dot(A.T, B))
+            #X -= 0.2 * np.dot(A.T, np.dot(A.T, X) - B)
 
             # deform template
             v_i = np.array(D.dot(X))
