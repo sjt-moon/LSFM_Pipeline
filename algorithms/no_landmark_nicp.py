@@ -108,42 +108,11 @@ class NonRigidIcp:
             # find nearest neighbour and the normals
             U, tri_indices = closest_points_on_target(v_i)
 
-            # ---- WEIGHTS ----
-            # 1.  Edges
-            # Are any of the corresponding tris on the edge of the target?
-            # Where they are we return a false weight (we *don't* want to
-            # include these points in the solve)
-            w_i_e = np.in1d(tri_indices, edge_tris, invert=True)
-
-            # 2. Normals
-            # Calculate the normals of the current v_i
-            v_i_tm = TriMesh(v_i, trilist=trilist)
-            v_i_n = v_i_tm.vertex_normals()
-            # Extract the corresponding normals from the target
-            u_i_n = target_tri_normals[tri_indices]
-            # If the dot of the normals is lt 0.9 don't contrib to deformation
-            w_i_n = (u_i_n * v_i_n).sum(axis=1) > 0.9
-
-            # Form the overall w_i from the normals, edge case
-            # for now disable the edge constraint (it was noisy anyway)
-            w_i = w_i_n
-
-            prop_w_i = (n - sum(w_i) * 1.0) / n
-            prop_w_i_n = (n - sum(w_i_n) * 1.0) / n
-            prop_w_i_e = (n - sum(w_i_e) * 1.0) / n
-
-            if gamma is not None:
-                w_i *= gamma
-
-            # Build the sparse diagonal weight matrix
-            W = sp.diags(np.array(w_i).astype(np.float)[None, :], [0])
-
             data = np.hstack((v_i.ravel(), ones))
             D = sp.coo_matrix((data, (row, col)))
 
-            to_stack_A = [alpha_M_kron_G, W.dot(D)]
-            to_stack_B = [np.zeros((alpha_M_kron_G.shape[0], n_dims)),
-                          U * w_i[:, None]]  # nullify nearest points by w_i
+            to_stack_A = [alpha_M_kron_G, D]
+            to_stack_B = [np.zeros((alpha_M_kron_G.shape[0], n_dims)), U]
 
             A = np.array(sp.vstack(to_stack_A).tocsr().todense())
             B = np.array(sp.vstack(to_stack_B).tocsr().todense())

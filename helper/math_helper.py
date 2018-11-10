@@ -1,5 +1,4 @@
 import datetime
-from numpy.linalg import matrix_rank
 import numpy as np
 
 
@@ -46,4 +45,4 @@ def _is_invertible(A):
         currently abandoned, since it takes so long time to get the rank
     """
     # return matrix_rank(A) == A.shape[0]
-    return False
+    return True
