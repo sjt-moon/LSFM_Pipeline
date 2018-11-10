@@ -129,13 +129,7 @@ class NonRigidIcp:
             X_prev = X
 
             if self.verbose:
-                info = ' - {} regularized_error: {:.3f}  ' \
-                       'total: {:.0%}  norms: {:.0%}  ' \
-                       'edges: {:.0%}'.format(iter_,
-                                              regularized_err,
-                                              prop_w_i,
-                                              prop_w_i_n,
-                                              prop_w_i_e)
+                info = ' - {} regularized_error: {:.3f}  '.format(iter_, regularized_err)
                 print(info)
 
             if regularized_err < self.eps:
