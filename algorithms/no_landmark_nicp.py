@@ -65,7 +65,7 @@ class NonRigidIcp:
         closest_points_on_target = VTKClosestPointLocator(target_vtk)
 
         # log
-        training_info = {'loss';[], 'regularized_err':[], 'err':[]}
+        training_info = {'loss':[], 'regularized_err':[], 'err':[]}
 
         for i, (alpha, gamma) in enumerate(zip(self.stiffness_weights, self.data_weights), 1):
             if self.verbose:
@@ -154,7 +154,7 @@ class NonRigidIcp:
         current_instance = source.copy()
         current_instance.points = v_i.copy()
 
-        return current_instance, trainging_info
+        return current_instance, training_info
 
     @staticmethod
     def _node_arc_incidence_matrix(source):
