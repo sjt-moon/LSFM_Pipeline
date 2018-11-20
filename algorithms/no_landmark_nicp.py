@@ -13,7 +13,7 @@ class NonRigidIcp:
     Attributes:
         stiffness_weights (int array or None): stiffness for each iteration
         data_weights (int array or None): data weights for each iteration
-		solver (string): 'umfpack' or 'naive'
+        solver (string): 'umfpack' or 'naive'
         eps (float): training precision
         verbose (boolean): whether to print out training info
     """
@@ -126,17 +126,11 @@ class NonRigidIcp:
             A = np.array(sp.vstack(to_stack_A).tocsr().todense())
             B = np.array(sp.vstack(to_stack_B).tocsr().todense())
 
-<<<<<<< HEAD
-            X = math_helper.solve(np.dot(A.T, A), np.dot(A.T, B))
-=======
             X = math_helper.Solver.linear_solver(A.T @ A, A.T @ B, self.solver)
-            #X = math_helper.solve(np.dot(A.T, A), np.dot(A.T, B), solver=self.solver)
->>>>>>> 8620cc149694c7275cebbd0387eea0ebf3ceca12
 
             # deform template
             v_i = np.array(D.dot(X))
 
-<<<<<<< HEAD
             #delta_x = np.linalg.norm(X_prev - X, ord='fro')
             loss = np.linalg.norm(A @ X - B, ord='fro')
             regularized_loss = loss / len(source.points)
@@ -145,21 +139,6 @@ class NonRigidIcp:
 
             if self.verbose:
                 info = ' - {} loss: {:.3f} regularized_error: {:.3f}  '.format(iter_, loss, regularized_loss)
-=======
-            loss = np.linalg.norm(A @ X - B, ord='fro')
-            err = np.linalg.norm(X_prev - X, ord='fro')
-            regularized_err = err / np.sqrt(np.size(X_prev))
-
-            # log
-            training_info['loss'].append(loss)
-            training_info['regularized_err'].append(regularized_err)
-            training_info['err'].append(err)
-
-            X_prev = X
-
-            if self.verbose:
-                info = ' - {} regularized_error: {:.3f} \t {:.3f}'.format(iter_, regularized_err, loss)
->>>>>>> 8620cc149694c7275cebbd0387eea0ebf3ceca12
                 print(info)
 
             if regularized_loss < self.eps:
@@ -168,13 +147,9 @@ class NonRigidIcp:
         current_instance = source.copy()
         current_instance.points = v_i.copy()
 
-<<<<<<< HEAD
         # NO TODO: current_instance.points = index_sort(current_instance.points, target.points, U)
 
         return current_instance
-=======
-        return current_instance, training_info
->>>>>>> 8620cc149694c7275cebbd0387eea0ebf3ceca12
 
     @staticmethod
     def _node_arc_incidence_matrix(source):
@@ -186,7 +161,6 @@ class NonRigidIcp:
         col = unique_edge_pairs.T.ravel()
         data = np.hstack((-1 * np.ones(m), np.ones(m)))
         return sp.coo_matrix((data, (row, col))), unique_edge_pairs
-<<<<<<< HEAD
 
     @staticmethod
     def index_sort(source_points, source_trilist, target_points, closest_points):
@@ -241,5 +215,3 @@ class NonRigidIcp:
             hash (string)
         """
         return ' '.join([str(x) for x in array])
-=======
->>>>>>> 8620cc149694c7275cebbd0387eea0ebf3ceca12
