@@ -13,10 +13,11 @@ class NonRigidIcp:
     Attributes:
         stiffness_weights (int array or None): stiffness for each iteration
         data_weights (int array or None): data weights for each iteration
+		solver (string): 'umfpack' or 'naive'
         eps (float): training precision
         verbose (boolean): whether to print out training info
     """
-    def __init__(self, stiffness_weights=None, data_weights=None, max_iter=10, eps=1e-3, verbose=True):
+    def __init__(self, stiffness_weights=None, data_weights=None, solver="umfpack", max_iter=10, eps=1e-3, verbose=True):
         """
         Init non-rigid icp model.
 
@@ -31,6 +32,7 @@ class NonRigidIcp:
         self.DEFAULT_DATA_WEIGHTS = [None] * len(self.DEFAULT_STIFFNESS_WEIGHTS)
         self.stiffness_weights = self.DEFAULT_STIFFNESS_WEIGHTS if stiffness_weights is None else stiffness_weights
         self.data_weights = self.DEFAULT_DATA_WEIGHTS if data_weights is None else data_weights
+        self.solver = solver
         self.max_iter = max_iter
         self.eps = eps
         self.verbose = verbose
@@ -45,6 +47,7 @@ class NonRigidIcp:
 
         Returns:
             transformed_mesh (menpo.shape.mesh.base.TriMesh): transformed source mesh
+            training_info (dict): containing 3 lists of loss/regularized_err/err while training
         """
         n_dims = source.n_dims
         transformed_mesh = source
@@ -60,13 +63,18 @@ class NonRigidIcp:
         target_vtk = trimesh_to_vtk(target)
         closest_points_on_target = VTKClosestPointLocator(target_vtk)
 
+        # log
+        training_info = {'loss':[], 'regularized_err':[], 'err':[]}
+
         for i, (alpha, gamma) in enumerate(zip(self.stiffness_weights, self.data_weights), 1):
             if self.verbose:
                 print("Epoch " + str(i) + " with stiffness " + str(alpha))
-            transformed_mesh = self._non_rigid_icp_iter(transformed_mesh, target, closest_points_on_target,
+            transformed_mesh, err_info = self._non_rigid_icp_iter(transformed_mesh, target, closest_points_on_target,
                                                         M_kron_G, alpha, gamma)
+            for k in training_info.keys():
+                training_info[k] += err_info[k]
 
-        return transformed_mesh
+        return transformed_mesh, training_info
 
     def _non_rigid_icp_iter(self, source, target, closest_points_on_target, M_kron_G, alpha, gamma):
         """
@@ -82,6 +90,7 @@ class NonRigidIcp:
 
         Returns:
             current_instance (menpo.shape.mesh.base.TriMesh): transformed source mesh
+            training_info (dict): containing 3 lists of loss/regularized_err/err while training
         """
         # init transformation
         n_dims = source.n_dims
@@ -101,6 +110,7 @@ class NonRigidIcp:
         alpha_M_kron_G = alpha * M_kron_G
 
         # start iteration
+        training_info = {'loss': [], 'regularized_err': [], 'err': []}
         iter_ = 0
         while iter_ < self.max_iter:
             iter_ += 1
@@ -116,11 +126,17 @@ class NonRigidIcp:
             A = np.array(sp.vstack(to_stack_A).tocsr().todense())
             B = np.array(sp.vstack(to_stack_B).tocsr().todense())
 
+<<<<<<< HEAD
             X = math_helper.solve(np.dot(A.T, A), np.dot(A.T, B))
+=======
+            X = math_helper.Solver.linear_solver(A.T @ A, A.T @ B, self.solver)
+            #X = math_helper.solve(np.dot(A.T, A), np.dot(A.T, B), solver=self.solver)
+>>>>>>> 8620cc149694c7275cebbd0387eea0ebf3ceca12
 
             # deform template
             v_i = np.array(D.dot(X))
 
+<<<<<<< HEAD
             #delta_x = np.linalg.norm(X_prev - X, ord='fro')
             loss = np.linalg.norm(A @ X - B, ord='fro')
             regularized_loss = loss / len(source.points)
@@ -129,6 +145,21 @@ class NonRigidIcp:
 
             if self.verbose:
                 info = ' - {} loss: {:.3f} regularized_error: {:.3f}  '.format(iter_, loss, regularized_loss)
+=======
+            loss = np.linalg.norm(A @ X - B, ord='fro')
+            err = np.linalg.norm(X_prev - X, ord='fro')
+            regularized_err = err / np.sqrt(np.size(X_prev))
+
+            # log
+            training_info['loss'].append(loss)
+            training_info['regularized_err'].append(regularized_err)
+            training_info['err'].append(err)
+
+            X_prev = X
+
+            if self.verbose:
+                info = ' - {} regularized_error: {:.3f} \t {:.3f}'.format(iter_, regularized_err, loss)
+>>>>>>> 8620cc149694c7275cebbd0387eea0ebf3ceca12
                 print(info)
 
             if regularized_loss < self.eps:
@@ -137,9 +168,13 @@ class NonRigidIcp:
         current_instance = source.copy()
         current_instance.points = v_i.copy()
 
+<<<<<<< HEAD
         # NO TODO: current_instance.points = index_sort(current_instance.points, target.points, U)
 
         return current_instance
+=======
+        return current_instance, training_info
+>>>>>>> 8620cc149694c7275cebbd0387eea0ebf3ceca12
 
     @staticmethod
     def _node_arc_incidence_matrix(source):
@@ -151,6 +186,7 @@ class NonRigidIcp:
         col = unique_edge_pairs.T.ravel()
         data = np.hstack((-1 * np.ones(m), np.ones(m)))
         return sp.coo_matrix((data, (row, col))), unique_edge_pairs
+<<<<<<< HEAD
 
     @staticmethod
     def index_sort(source_points, source_trilist, target_points, closest_points):
@@ -205,3 +241,5 @@ class NonRigidIcp:
             hash (string)
         """
         return ' '.join([str(x) for x in array])
+=======
+>>>>>>> 8620cc149694c7275cebbd0387eea0ebf3ceca12
