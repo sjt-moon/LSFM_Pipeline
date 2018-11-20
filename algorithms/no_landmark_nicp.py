@@ -1,9 +1,8 @@
 import menpo3d
 import numpy as np
 import scipy.sparse as sp
-from menpo.shape import TriMesh
 from menpo3d.vtkutils import trimesh_to_vtk, VTKClosestPointLocator
-
+import warnings
 from helper import math_helper
 
 
@@ -88,7 +87,7 @@ class NonRigidIcp:
         n_dims = source.n_dims
         h_dims = n_dims + 1
         n = source.points.shape[0]
-        X_prev = np.tile(np.zeros((n_dims, h_dims)), n).T
+        #X_prev = np.tile(np.zeros((n_dims, h_dims)), n).T
         v_i = source.points
         edge_tris = source.boundary_tri_index()
         trilist = source.trilist
@@ -118,25 +117,27 @@ class NonRigidIcp:
             B = np.array(sp.vstack(to_stack_B).tocsr().todense())
 
             X = math_helper.solve(np.dot(A.T, A), np.dot(A.T, B))
-            #X -= 0.2 * np.dot(A.T, np.dot(A.T, X) - B)
 
             # deform template
             v_i = np.array(D.dot(X))
 
-            err = np.linalg.norm(X_prev - X, ord='fro')
-            regularized_err = err / np.sqrt(np.size(X_prev))
+            #delta_x = np.linalg.norm(X_prev - X, ord='fro')
+            loss = np.linalg.norm(A @ X - B, ord='fro')
+            regularized_loss = loss / len(source.points)
 
-            X_prev = X
+            #X_prev = X
 
             if self.verbose:
-                info = ' - {} regularized_error: {:.3f}  '.format(iter_, regularized_err)
+                info = ' - {} loss: {:.3f} regularized_error: {:.3f}  '.format(iter_, loss, regularized_loss)
                 print(info)
 
-            if regularized_err < self.eps:
+            if regularized_loss < self.eps:
                 break
 
         current_instance = source.copy()
         current_instance.points = v_i.copy()
+
+        # NO TODO: current_instance.points = index_sort(current_instance.points, target.points, U)
 
         return current_instance
 
@@ -150,3 +151,57 @@ class NonRigidIcp:
         col = unique_edge_pairs.T.ravel()
         data = np.hstack((-1 * np.ones(m), np.ones(m)))
         return sp.coo_matrix((data, (row, col))), unique_edge_pairs
+
+    @staticmethod
+    def index_sort(source_points, source_trilist, target_points, closest_points):
+        """
+        Sort source points and trilist to match target.
+
+        Parameters:
+            source_points (numpy ndarray): source points
+            source_trilist (numpy ndarray): source trilist
+            target_points (numpy ndarray): target points
+            closest_points (numpy ndarray): the closest target points for each source point
+
+        Returns:
+            source_points_sorted (numpy ndarray): sorted source points
+            source_trilist_sorted (numpy ndarray): sorted source trilist indices
+        """
+        # TODO: many to one mapping
+        warnings.warn("deprecated", DeprecationWarning)
+
+        source_points_sorted = [None] * len(source_points)
+        source_trilist_sorted = [None] * len(source_trilist)
+
+        # closest point on target: target point index
+        point2IndexMap = {}
+        for i, point in enumerate(target_points):
+            point2IndexMap[hash(point)] = i
+
+        # old source point index: new source point index after sorting
+        old2newIndexMap = {}
+        for i in range(min(len(source_points), len(closest_points))):
+            old2newIndexMap[i] = point2IndexMap[hash(closest_points[i])]
+
+        # rearrange source points
+        for k, v in old2newIndexMap.items():
+            source_points_sorted[v] = source_points[k]
+
+        # rearrange source trilist
+        for i in range(len(source_trilist)):
+            source_trilist_sorted[i] = [old2newIndexMap[e] for e in source_trilist[i]]
+
+        return source_points_sorted, source_trilist_sorted
+
+    @staticmethod
+    def hash(array):
+        """
+        Hash an array.
+
+        Parameters:
+            array (numpy array or list of floats): array to be hashed
+
+        Returns:
+            hash (string)
+        """
+        return ' '.join([str(x) for x in array])
