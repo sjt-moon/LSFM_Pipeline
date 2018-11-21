@@ -1,11 +1,15 @@
 from menpo.transform import Translation, UniformScale
 import numpy as np
+import configparser
+
+config = configparser.ConfigParser()
+config.read('config.ini')
 
 # variance for dimention (X, Y, Z)
-VAR = np.array([85, 300, 220])
+VAR = np.array(config['DEFAULT']['VAR'])
 
 # rescaled center
-CENTER = np.array([0, 0, 0])
+CENTER = np.array(config['DEFAULT']['CENTER'])
 
 
 def rescale(mesh, center=CENTER, var=VAR):

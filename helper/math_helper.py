@@ -10,7 +10,7 @@ class Solver:
 
     """
     def __init__(self, A, B, eps=1e-3, max_iter=10, solver="umfpack", verbose=True):
-        assert solver == "umfpack" or solver == "naive", "Unknown solver, use umfpack or naive."
+        assert solver in {"umfpack", "naive"}, "Unknown solver, use umfpack or naive."
 
         A = A.todense() if callable(getattr(A, "todense", None)) else np.array(A)
         B = B.todense() if callable(getattr(B, "todense", None)) else np.array(B)

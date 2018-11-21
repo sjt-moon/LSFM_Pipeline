@@ -17,7 +17,8 @@ class NonRigidIcp:
         eps (float): training precision
         verbose (boolean): whether to print out training info
     """
-    def __init__(self, stiffness_weights=None, data_weights=None, solver="umfpack", max_iter=10, eps=1e-3, verbose=True):
+    def __init__(self, stiffness_weights=(50, 20, 5, 2, 0.8, 0.5, 0.35, 0.2), data_weights=None,
+                 solver="umfpack", max_iter=10, eps=1e-3, verbose=True):
         """
         Init non-rigid icp model.
 
@@ -28,11 +29,13 @@ class NonRigidIcp:
             eps (float): training precision
             verbose (boolean): whether to print out training info
         """
-        self.DEFAULT_STIFFNESS_WEIGHTS = [50, 20, 5, 2, 0.8, 0.5, 0.35, 0.2]
-        self.DEFAULT_DATA_WEIGHTS = [None] * len(self.DEFAULT_STIFFNESS_WEIGHTS)
-        self.stiffness_weights = self.DEFAULT_STIFFNESS_WEIGHTS if stiffness_weights is None else stiffness_weights
-        self.data_weights = self.DEFAULT_DATA_WEIGHTS if data_weights is None else data_weights
-        self.solver = solver
+        self.stiffness_weights = stiffness_weights
+        self.data_weights = data_weights if data_weights is not None else [None] * len(stiffness_weights)
+        assert len(self.stiffness_weights) == len(self.data_weights), \
+            "number of stiffness weights doesn't match to numbers of data weights."
+
+        assert solver.lower() in {"umfpack", "naive"}, "Unknown solver, only umfpack and naive solvers are supported"
+        self.solver = solver.lower()
         self.max_iter = max_iter
         self.eps = eps
         self.verbose = verbose
@@ -75,7 +78,11 @@ class NonRigidIcp:
                 training_info[k] += err_info[k]
 
         if self.verbose:
-            print(training_info)
+            print("average loss: {:.3f}\naverage regularized loss: {:.3f}"
+                  .format(np.mean(training_info['loss']),
+                          np.mean(training_info['regularized_loss'])
+                          )
+                  )
 
         return transformed_mesh, training_info
 
@@ -99,12 +106,7 @@ class NonRigidIcp:
         n_dims = source.n_dims
         h_dims = n_dims + 1
         n = source.points.shape[0]
-        #X_prev = np.tile(np.zeros((n_dims, h_dims)), n).T
         v_i = source.points
-
-        #edge_tris = source.boundary_tri_index()
-        #trilist = source.trilist
-        #target_tri_normals = target.tri_normals()
 
         # we need to prepare some indices for efficient construction of the D sparse matrix.
         row = np.hstack((np.repeat(np.arange(n)[:, None], n_dims, axis=1).ravel(), np.arange(n)))
@@ -135,13 +137,10 @@ class NonRigidIcp:
             # deform template
             v_i = np.array(D.dot(X))
 
-            #delta_x = np.linalg.norm(X_prev - X, ord='fro')
             loss = np.linalg.norm(A @ X - B, ord='fro')
             regularized_loss = loss / len(source.points)
             training_info['loss'].append(loss)
             training_info['regularized_loss'].append(regularized_loss)
-
-            #X_prev = X
 
             if self.verbose:
                 info = ' - {} loss: {:.3f} regularized_loss: {:.3f}  '.format(iter_, loss, regularized_loss)
@@ -152,8 +151,6 @@ class NonRigidIcp:
 
         current_instance = source.copy()
         current_instance.points = v_i.copy()
-
-        # NO TODO: current_instance.points = index_sort(current_instance.points, target.points, U)
 
         return current_instance, training_info
 
@@ -168,6 +165,7 @@ class NonRigidIcp:
         data = np.hstack((-1 * np.ones(m), np.ones(m)))
         return sp.coo_matrix((data, (row, col))), unique_edge_pairs
 
+    # deprecated
     @staticmethod
     def index_sort(source_points, source_trilist, target_points, closest_points):
         """

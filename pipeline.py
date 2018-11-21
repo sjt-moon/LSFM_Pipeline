@@ -1,4 +1,4 @@
-from helper import loader
+from helper import loader, ConfigLoader
 from algorithms import no_landmark_nicp
 from os import listdir
 from os.path import isfile, join
@@ -6,14 +6,17 @@ from menpo.model import PCAModel
 import numpy as np
 from sklearn.decomposition import PCA
 from menpo.shape.mesh.base import TriMesh
+from functools import reduce
+import configparser
 
 
 class Pipeline:
     """
     LSFM Pipeline.
     """
-    def __init__(self, base_model_path, stiffness_weights=None, data_weights=None, max_iter=10, eps=1e-3,
-                 max_num_points=100, n_components=0.997, verbose=True):
+
+    def __init__(self, base_model_path, stiffness_weights=None, data_weights=None, solver=None, max_iter=None,
+                 eps=None, max_num_points=None, n_components=None, verbose=None):
         """
         LSFM Pipeline.
 
@@ -21,6 +24,7 @@ class Pipeline:
             base_model_path (string): target mesh path
             stiffness_weights (int array or None): stiffness for each iteration
             data_weights (int array or None): data weights for each iteration
+            solver (string): solver for linear equations like Ax = B
             max_iter (int): max number of iterations for each stiffness
             eps (float): training precision
             max_num_points (int): max number of points for each point cloud
@@ -32,15 +36,34 @@ class Pipeline:
             verbose (boolean): whether to print out training info
         """
         # TODO: @abandoned self.target = loader.get_mean_model(base_model_path)
-        if verbose:
-            print("\nloading target mesh {}\n".format(base_model_path));
+        # load defaults from config.ini
+        config = Pipeline.configuration_check()
+
+        DEFAULT_STIFFNESS_WEIGHTS = ConfigLoader.load_list(config['DEFAULT']['DEFAULT_STIFFNESS_WEIGHTS'])
+        DEFAULT_DATA_WEIGHTS = [None] * len(DEFAULT_STIFFNESS_WEIGHTS)
+        SOLVER = config['DEFAULT']['SOLVER']
+        MAX_ITER = int(ConfigLoader.load_number(config['DEFAULT']['MAX_ITER']))
+        EPS = ConfigLoader.load_number(config['DEFAULT']['EPS'])
+        MAX_NUM_POINTS = ConfigLoader.load_number(config['DEFAULT']['MAX_NUM_POINTS'])
+        N_COMPONENTS = ConfigLoader.load_number(config['DEFAULT']['N_COMPONENTS'])
+        VERBOSE = ConfigLoader.load_number(config['DEFAULT']['VERBOSE'])
+
+        self.verbose = verbose if verbose is not None else VERBOSE
+        if self.verbose:
+            print("\nloading target mesh {}\n".format(base_model_path))
         self.target = loader.get_mesh(base_model_path)
-        self.max_num_points = max_num_points
-        self.n_components = n_components
-        self.verbose = verbose
-        self.nicp_process = no_landmark_nicp.NonRigidIcp(stiffness_weights=stiffness_weights,
-                                                         data_weights=data_weights, max_iter=max_iter,
-                                                         eps=eps, verbose=verbose)
+
+        self.stiffness_weights = stiffness_weights if stiffness_weights is not None else DEFAULT_STIFFNESS_WEIGHTS
+        self.data_weights = data_weights if data_weights is not None else DEFAULT_DATA_WEIGHTS
+        self.solver = solver if solver is not None else SOLVER
+        self.max_iter = max_iter if max_iter is not None else MAX_ITER
+        self.eps = eps if eps is not None else EPS
+        self.max_num_points = max_num_points if max_num_points is not None else MAX_NUM_POINTS
+        self.n_components = n_components if n_components is not None else N_COMPONENTS
+
+        self.nicp_process = no_landmark_nicp.NonRigidIcp(stiffness_weights=self.stiffness_weights,
+                                                         data_weights=self.data_weights, solver=self.solver,
+                                                         max_iter=self.max_iter, eps=self.eps, verbose=self.verbose)
         self.mesh_samples = [self.target, ]
         self.training_logs = []
 
@@ -53,10 +76,10 @@ class Pipeline:
 
         Return:
             aligned_meshes (list of TriMesh): aligned meshes
-            trainging_logs (list of dict): training information logs for each alignment
+            trainging_logs (dict of dict): , key is mesh file name, value is training logs for that alignment
         """
         aligned_meshes = []
-        training_logs = []
+        training_logs = {}
         mesh_files = list(filter(lambda f: isfile(f), list(map(lambda f: join(input_path, f), listdir(input_path)))))
         for mesh_file in mesh_files:
             if not mesh_file.endswith(".obj"):
@@ -66,9 +89,14 @@ class Pipeline:
             source = loader.get_mesh(mesh_file)
             aligned_mesh, training_log = self.nicp_process.non_rigid_icp(source, self.target)
             aligned_meshes.append(aligned_mesh)
-            training_logs.append(training_log)
+            training_logs[mesh_file] = training_log
         if self.verbose:
-            print("\n{} meshes aligned to the target\n".format(len(aligned_meshes)))
+            print("\n{} meshes aligned to the target".format(len(aligned_meshes)))
+            print("average loss: {:.3f}\naverage regularized loss: {:.3f}\n"
+                  .format(
+                np.mean(reduce(lambda x, y: x + y, map(lambda x: x['loss'], training_logs.values()))),
+                np.mean(reduce(lambda x, y: x + y, map(lambda x: x['regularized_loss'], training_logs.values())))
+            ))
         return aligned_meshes, training_logs
 
     def run(self, input_path):
@@ -142,3 +170,17 @@ class Pipeline:
                 self.n_components, n_comps_retained))
         pca_model.trim_components(self.n_components)
         return pca_model
+
+    @staticmethod
+    def configuration_check():
+        """
+        Check whether configuration file exists and is valid.
+
+        Return:
+            config (configparser.ConfigParser): config for the pipeline
+        """
+        assert isfile("config.ini"), "Configuration not found, you should have a configuration file called 'config.ini'"
+        config = configparser.ConfigParser()
+        config.read("config.ini")
+
+        return config
