@@ -3,3 +3,4 @@ KEEP*
 *.iml
 *.pyc
 *checkpoint*
+*.pkl
