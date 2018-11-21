@@ -42,7 +42,6 @@ class Pipeline:
         config = Pipeline.configuration_check()
 
         DEFAULT_STIFFNESS_WEIGHTS = ConfigLoader.load_list(config['DEFAULT']['DEFAULT_STIFFNESS_WEIGHTS'])
-        DEFAULT_DATA_WEIGHTS = [None] * len(DEFAULT_STIFFNESS_WEIGHTS)
         SOLVER = config['DEFAULT']['SOLVER']
         MAX_ITER = int(ConfigLoader.load_number(config['DEFAULT']['MAX_ITER']))
         EPS = ConfigLoader.load_number(config['DEFAULT']['EPS'])
@@ -60,7 +59,7 @@ class Pipeline:
         self.target = loader.get_mesh(base_model_path, self.center, self.var)
 
         self.stiffness_weights = stiffness_weights if stiffness_weights is not None else DEFAULT_STIFFNESS_WEIGHTS
-        self.data_weights = data_weights if data_weights is not None else DEFAULT_DATA_WEIGHTS
+        self.data_weights = data_weights if data_weights is not None else [None] * len(self.stiffness_weights)
         self.solver = solver if solver is not None else SOLVER
         self.max_iter = max_iter if max_iter is not None else MAX_ITER
         self.eps = eps if eps is not None else EPS
@@ -82,7 +81,7 @@ class Pipeline:
 
         Return:
             aligned_meshes (list of TriMesh): aligned meshes
-            trainging_logs (dict of dict): , key is mesh file name, value is training logs for that alignment
+            trainging_logs (dict of dict): key is mesh file name, value is training logs for that alignment
         """
         aligned_meshes = []
         training_logs = {}
@@ -113,11 +112,14 @@ class Pipeline:
             input_path (string): input directory
 
         Return:
-            LSFM model
+            LSFM model (menpo.model.PCAModel): LSFM model
+            trainging_logs (dict of dict): training log while aligning, key is mesh file name,
+                value is training logs for that alignment
         """
-        aligned_meshes = self.align(input_path)[0] + self.target
+        aligned_meshes, training_logs = self.align(input_path)
+        aligned_meshes += self.target
         pca_meshes = self.prune_on_num_points(aligned_meshes)
-        return self.pca_prune(pca_meshes)
+        return self.pca_prune(pca_meshes), training_logs
 
     def prune_on_num_points(self, aligned_meshes):
         """
