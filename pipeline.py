@@ -16,7 +16,7 @@ class Pipeline:
     """
 
     def __init__(self, base_model_path, stiffness_weights=None, data_weights=None, solver=None, max_iter=None,
-                 eps=None, max_num_points=None, n_components=None, verbose=None):
+                 eps=None, max_num_points=None, n_components=None, center=None, var=None, verbose=None):
         """
         LSFM Pipeline.
 
@@ -33,6 +33,8 @@ class Pipeline:
                 if 0 < n_components < 1, select the number of components such that the amount of variance
                     that needs to be explained is greater than the percentage specified by n_components;
                 if None, all components are retained
+            center (numpy.array of 3 floats): center on 3 dimensions
+            var (numpy.array of 3 floats): variance on 3 dimensions
             verbose (boolean): whether to print out training info
         """
         # TODO: @abandoned self.target = loader.get_mean_model(base_model_path)
@@ -46,12 +48,16 @@ class Pipeline:
         EPS = ConfigLoader.load_number(config['DEFAULT']['EPS'])
         MAX_NUM_POINTS = ConfigLoader.load_number(config['DEFAULT']['MAX_NUM_POINTS'])
         N_COMPONENTS = ConfigLoader.load_number(config['DEFAULT']['N_COMPONENTS'])
+        CENTER = ConfigLoader.load_list(config['DEFAULT']['CENTER'])
+        VAR = ConfigLoader.load_list(config['DEFAULT']['VAR'])
         VERBOSE = ConfigLoader.load_number(config['DEFAULT']['VERBOSE'])
 
         self.verbose = verbose if verbose is not None else VERBOSE
+        self.center = center if center is not None else CENTER
+        self.var = var if var is not None else VAR
         if self.verbose:
             print("\nloading target mesh {}\n".format(base_model_path))
-        self.target = loader.get_mesh(base_model_path)
+        self.target = loader.get_mesh(base_model_path, self.center, self.var)
 
         self.stiffness_weights = stiffness_weights if stiffness_weights is not None else DEFAULT_STIFFNESS_WEIGHTS
         self.data_weights = data_weights if data_weights is not None else DEFAULT_DATA_WEIGHTS
@@ -86,7 +92,7 @@ class Pipeline:
                 continue
             if self.verbose:
                 print("\nloading mesh file {}\n".format(mesh_file))
-            source = loader.get_mesh(mesh_file)
+            source = loader.get_mesh(mesh_file, self.center, self.var)
             aligned_mesh, training_log = self.nicp_process.non_rigid_icp(source, self.target)
             aligned_meshes.append(aligned_mesh)
             training_logs[mesh_file] = training_log

@@ -9,30 +9,34 @@ import menpo3d
 from helper import rescale
 
 
-def get_mean_model(model_path):
+def get_mean_model(model_path, center, var):
     """
     Get scaled mean BFM mesh.
 
     Parameters:
         model_path (string): path to BFM model
+        center (numpy.array of 3 floats): center on 3 dimensions
+        var (numpy.array of 3 floats): variance on 3 dimensions
 
     Returns:
         mean_mesh (menpo.shape.mesh.base.TriMesh): mean mesh model
     """
-    return rescale.rescale(_get_mean_model(_load_BFM(model_path)))
+    return rescale.rescale(_get_mean_model(_load_BFM(model_path)), center=center, var=var)
 
 
-def get_mesh(mesh_path):
+def get_mesh(mesh_path, center, var):
     """
     Get scaled mesh from mesh files like .obj.
 
     Parameters:
         mesh_path (string): path to mesh file
+        center (numpy.array of 3 floats): center on 3 dimensions
+        var (numpy.array of 3 floats): variance on 3 dimensions
 
     Returns:
         mesh object (menpo.shape.mesh.base.TriMesh): mean mesh model
     """
-    return rescale.rescale(_get_mesh(mesh_path))
+    return rescale.rescale(_get_mesh(mesh_path), center=center, var=var)
 
 
 def _get_mesh(mesh_path):
