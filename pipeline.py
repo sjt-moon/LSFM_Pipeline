@@ -54,7 +54,7 @@ class Pipeline:
             aligned meshes
         """
         aligned_meshes = []
-        mesh_files = [f for f in listdir(input_path) if isfile(join(input_path, f))]
+        mesh_files = list(filter(lambda f: isfile(f), list(map(lambda f: join(input_path, f), listdir(input_path)))))
         for mesh_file in mesh_files:
             if not mesh_file.endswith(".obj"):
                 continue
