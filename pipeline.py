@@ -50,7 +50,7 @@ class Pipeline:
         N_COMPONENTS = ConfigLoader.load_number(config['DEFAULT']['N_COMPONENTS'])
         CENTER = ConfigLoader.load_list(config['DEFAULT']['CENTER'])
         VAR = ConfigLoader.load_list(config['DEFAULT']['VAR'])
-        VERBOSE = ConfigLoader.load_number(config['DEFAULT']['VERBOSE'])
+        VERBOSE = ConfigLoader.load_bool(config['DEFAULT']['VERBOSE'])
 
         self.verbose = verbose if verbose is not None else VERBOSE
         self.center = center if center is not None else CENTER
