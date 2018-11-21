@@ -101,9 +101,10 @@ class NonRigidIcp:
         n = source.points.shape[0]
         #X_prev = np.tile(np.zeros((n_dims, h_dims)), n).T
         v_i = source.points
-        edge_tris = source.boundary_tri_index()
-        trilist = source.trilist
-        target_tri_normals = target.tri_normals()
+
+        #edge_tris = source.boundary_tri_index()
+        #trilist = source.trilist
+        #target_tri_normals = target.tri_normals()
 
         # we need to prepare some indices for efficient construction of the D sparse matrix.
         row = np.hstack((np.repeat(np.arange(n)[:, None], n_dims, axis=1).ravel(), np.arange(n)))
@@ -113,7 +114,7 @@ class NonRigidIcp:
         alpha_M_kron_G = alpha * M_kron_G
 
         # start iteration
-        training_info = {'loss': [], 'regularized_err': [], 'err': []}
+        training_info = {'loss': [], 'regularized_loss': []}
         iter_ = 0
         while iter_ < self.max_iter:
             iter_ += 1
@@ -137,11 +138,13 @@ class NonRigidIcp:
             #delta_x = np.linalg.norm(X_prev - X, ord='fro')
             loss = np.linalg.norm(A @ X - B, ord='fro')
             regularized_loss = loss / len(source.points)
+            training_info['loss'].append(loss)
+            training_info['regularized_loss'].append(regularized_loss)
 
             #X_prev = X
 
             if self.verbose:
-                info = ' - {} loss: {:.3f} regularized_error: {:.3f}  '.format(iter_, loss, regularized_loss)
+                info = ' - {} loss: {:.3f} regularized_loss: {:.3f}  '.format(iter_, loss, regularized_loss)
                 print(info)
 
             if regularized_loss < self.eps:
@@ -152,7 +155,7 @@ class NonRigidIcp:
 
         # NO TODO: current_instance.points = index_sort(current_instance.points, target.points, U)
 
-        return current_instance
+        return current_instance, training_info
 
     @staticmethod
     def _node_arc_incidence_matrix(source):
