@@ -64,7 +64,7 @@ class NonRigidIcp:
         closest_points_on_target = VTKClosestPointLocator(target_vtk)
 
         # log
-        training_info = {'loss':[], 'regularized_err':[], 'err':[]}
+        training_info = {'loss':[], 'regularized_loss':[]}
 
         for i, (alpha, gamma) in enumerate(zip(self.stiffness_weights, self.data_weights), 1):
             if self.verbose:
