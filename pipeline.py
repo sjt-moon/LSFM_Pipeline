@@ -42,6 +42,7 @@ class Pipeline:
                                                          data_weights=data_weights, max_iter=max_iter,
                                                          eps=eps, verbose=verbose)
         self.mesh_samples = [self.target, ]
+        self.training_logs = []
 
     def align(self, input_path):
         """
@@ -51,9 +52,11 @@ class Pipeline:
             input_path (string): input directory
 
         Return:
-            aligned meshes
+            aligned_meshes (list of TriMesh): aligned meshes
+            trainging_logs (list of dict): training information logs for each alignment
         """
         aligned_meshes = []
+        training_logs = []
         mesh_files = list(filter(lambda f: isfile(f), list(map(lambda f: join(input_path, f), listdir(input_path)))))
         for mesh_file in mesh_files:
             if not mesh_file.endswith(".obj"):
@@ -61,10 +64,12 @@ class Pipeline:
             if self.verbose:
                 print("\nloading mesh file {}\n".format(mesh_file))
             source = loader.get_mesh(mesh_file)
-            aligned_meshes.append(self.nicp_process.non_rigid_icp(source, self.target))
+            aligned_mesh, training_log = self.nicp_process.non_rigid_icp(source, self.target)
+            aligned_meshes.append(aligned_mesh)
+            training_logs.append(training_log)
         if self.verbose:
             print("\n{} meshes aligned to the target\n".format(len(aligned_meshes)))
-        return aligned_meshes
+        return aligned_meshes, training_logs
 
     def run(self, input_path):
         """
@@ -76,7 +81,7 @@ class Pipeline:
         Return:
             LSFM model
         """
-        aligned_meshes = self.align(input_path) + self.target
+        aligned_meshes = self.align(input_path)[0] + self.target
         pca_meshes = self.prune_on_num_points(aligned_meshes)
         return self.pca_prune(pca_meshes)
 

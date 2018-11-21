@@ -74,6 +74,9 @@ class NonRigidIcp:
             for k in training_info.keys():
                 training_info[k] += err_info[k]
 
+        if self.verbose:
+            print(training_info)
+
         return transformed_mesh, training_info
 
     def _non_rigid_icp_iter(self, source, target, closest_points_on_target, M_kron_G, alpha, gamma):
