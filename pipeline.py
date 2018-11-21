@@ -32,6 +32,8 @@ class Pipeline:
             verbose (boolean): whether to print out training info
         """
         # TODO: @abandoned self.target = loader.get_mean_model(base_model_path)
+        if verbose:
+            print("\nloading target mesh {}\n".format(base_model_path));
         self.target = loader.get_mesh(base_model_path)
         self.max_num_points = max_num_points
         self.n_components = n_components
@@ -54,8 +56,14 @@ class Pipeline:
         aligned_meshes = []
         mesh_files = [f for f in listdir(input_path) if isfile(join(input_path, f))]
         for mesh_file in mesh_files:
+            if not mesh_file.endswith(".obj"):
+                continue
+            if self.verbose:
+                print("\nloading mesh file {}\n".format(mesh_file))
             source = loader.get_mesh(mesh_file)
             aligned_meshes.append(self.nicp_process.non_rigid_icp(source, self.target))
+        if self.verbose:
+            print("\n{} meshes aligned to the target\n".format(len(aligned_meshes)))
         return aligned_meshes
 
     def run(self, input_path):

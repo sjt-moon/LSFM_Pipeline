@@ -1,4 +1,5 @@
 KEEP*
 *.xml
 *.iml
+*.pyc
 *checkpoint*
