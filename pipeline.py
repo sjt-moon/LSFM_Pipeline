@@ -117,7 +117,7 @@ class Pipeline:
                 value is training logs for that alignment
         """
         aligned_meshes, training_logs = self.align(input_path)
-        aligned_meshes += self.target
+        aligned_meshes += [self.target]
         pca_meshes = self.prune_on_num_points(aligned_meshes)
         return self.pca_prune(pca_meshes), training_logs
 
@@ -137,6 +137,11 @@ class Pipeline:
         if self.max_num_points > N or self.max_num_points > M:
             print("PCA error, max number of points is too large, use {} points instead".format(min(M, N)))
             self.max_num_points = min(M, N)
+
+        if self.verbose:
+            print("before trimming on number of points for each mesh, it contains {} points\\mesh\n"
+                  "after trimming, it contains {} points\\mesh"
+                  .format(N, self.max_num_points))
 
         # PCA on number of points for each cloud
         X, Y, Z = [], [], []
@@ -177,6 +182,13 @@ class Pipeline:
             print('\nRetaining {:.2%} of eigenvalues keeps {} components'.format(
                 self.n_components, n_comps_retained))
         pca_model.trim_components(self.n_components)
+        if self.verbose:
+            print("Final PCA Model:\n# of components: {}\n# of points for each mesh (3 dims total): {}"
+                  "\neigen value respective ratios: {}\neigen value accumulative ratios: {}"
+                  .format(str(pca_model.components.shape[0]),
+                          str(pca_model.components.shape[1]),
+                          str(pca_model.eigenvalues_ratio()),
+                          str(pca_model.eigenvalues_cumulative_ratio())))
         return pca_model
 
     @staticmethod
