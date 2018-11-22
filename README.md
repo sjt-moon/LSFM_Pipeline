@@ -15,6 +15,8 @@ what is the core algorithm to align mesh clouds from different point-of-view
 ### 2.4 Integrate all: 
 how we build up the whole pipeline
 
+<br>
+
 ## 1 How to use our Pipeline
 ### 1.1 Basic usage:
 ````
