@@ -1,6 +1,6 @@
 from helper import loader, ConfigLoader
 from algorithms import no_landmark_nicp
-from os import listdir
+from os import listdir, walk
 from os.path import isfile, join
 from menpo.model import PCAModel
 import numpy as np
@@ -41,15 +41,16 @@ class Pipeline:
         # load defaults from config.ini
         config = Pipeline.configuration_check()
 
-        DEFAULT_STIFFNESS_WEIGHTS = ConfigLoader.load_list(config['DEFAULT']['DEFAULT_STIFFNESS_WEIGHTS'])
+        DEFAULT_STIFFNESS_WEIGHTS = ConfigLoader.load_list_numbers(config['DEFAULT']['DEFAULT_STIFFNESS_WEIGHTS'])
         SOLVER = config['DEFAULT']['SOLVER']
         MAX_ITER = int(ConfigLoader.load_number(config['DEFAULT']['MAX_ITER']))
         EPS = ConfigLoader.load_number(config['DEFAULT']['EPS'])
         MAX_NUM_POINTS = ConfigLoader.load_number(config['DEFAULT']['MAX_NUM_POINTS'])
         N_COMPONENTS = ConfigLoader.load_number(config['DEFAULT']['N_COMPONENTS'])
-        CENTER = ConfigLoader.load_list(config['DEFAULT']['CENTER'])
-        VAR = ConfigLoader.load_list(config['DEFAULT']['VAR'])
+        CENTER = ConfigLoader.load_list_numbers(config['DEFAULT']['CENTER'])
+        VAR = ConfigLoader.load_list_numbers(config['DEFAULT']['VAR'])
         VERBOSE = ConfigLoader.load_bool(config['DEFAULT']['VERBOSE'])
+        MESH_FILE_EXTENSIONS = ConfigLoader.load_list_strings(config['DEFAULT']['MESH_FILE_EXTENSIONS'])
 
         self.verbose = verbose if verbose is not None else VERBOSE
         self.center = center if center is not None else CENTER
@@ -71,6 +72,7 @@ class Pipeline:
                                                          max_iter=self.max_iter, eps=self.eps, verbose=self.verbose)
         self.mesh_samples = [self.target, ]
         self.training_logs = []
+        self.mesh_file_extensions = MESH_FILE_EXTENSIONS
 
     def align(self, input_path):
         """
@@ -85,10 +87,8 @@ class Pipeline:
         """
         aligned_meshes = []
         training_logs = {}
-        mesh_files = list(filter(lambda f: isfile(f), list(map(lambda f: join(input_path, f), listdir(input_path)))))
+        mesh_files = loader.get_all_mesh_files(input_path, self.mesh_file_extensions, self.verbose)
         for mesh_file in mesh_files:
-            if not mesh_file.endswith(".obj"):
-                continue
             if self.verbose:
                 print("\nloading mesh file {}\n".format(mesh_file))
             source = loader.get_mesh(mesh_file, self.center, self.var)

@@ -5,6 +5,8 @@ import numpy as np
 import scipy.io as sio
 from menpo.shape import TriMesh
 import menpo3d
+from os import walk
+from os.path import isfile, join, abspath
 
 from helper import rescale
 
@@ -108,3 +110,40 @@ def _get_mean_model(model):
         mean_mesh (menpo.shape.mesh.base.TriMesh): mean mesh model
     """
     return TriMesh(points=np.reshape(model['shapeMU'], (-1, 3)), trilist=model['tri'])
+
+
+def get_all_mesh_files(input_path, file_extensions, verbose):
+    """
+    Get all mesh files recursively under the input path.
+
+    Parameters:
+        input_path (string): input directory
+        file_extensions (list of strings): list of valid mesh file extensions, e.g. '.obj'
+        verbose (boolean): print mesh file info or not
+
+    Returns:
+        mesh files (list of string): list of absolute path for mesh files
+    """
+    files = []
+    for file_extension in file_extensions:
+        files += _get_all_mesh_files(input_path, file_extension)
+    if verbose:
+        print("{} mesh files found".format(len(files)))
+    return files
+
+
+def _get_all_mesh_files(input_path, file_extension):
+    """
+    Get all mesh files recursively under the input path.
+
+    Parameters:
+        input_path (string): input directory
+        file_extension (string): valid mesh file extension, e.g. '.obj'
+
+    Returns:
+        mesh files (list of string): list of absolute path for mesh files
+    """
+    return list(filter(lambda file: isfile(file) and file.endswith("." + file_extension),
+                       map(lambda obj_file: abspath(obj_file),
+                           [join(root, file) for root, _, files in walk(input_path) for file in files])))
+

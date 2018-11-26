@@ -1,9 +1,9 @@
 import re
 
 
-def load_list(config):
+def load_list_numbers(config):
     """
-    Load list from configuration.
+    Load list of numbers from configuration.
 
     Parameters:
         config (string): list of floats in string format
@@ -12,6 +12,19 @@ def load_list(config):
         list (list of floats)
     """
     return list(map(lambda x: float(x), filter(None, re.split(r"[^a-zA-Z0-9]+", config))))
+
+
+def load_list_strings(config):
+    """
+    Load list of strings from configuration.
+
+    Parameters:
+        config (string): list of floats in string format
+
+    Returns:
+        list (list of strings)
+    """
+    return list(map(lambda x: str(x).strip().lower(), filter(None, re.split(r"[^a-zA-Z0-9]+", config))))
 
 
 def load_bool(config):
