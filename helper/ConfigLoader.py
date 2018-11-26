@@ -11,7 +11,7 @@ def load_list_numbers(config):
     Returns:
         list (list of floats)
     """
-    return list(map(lambda x: float(x), filter(None, re.split(r"[^a-zA-Z0-9]+", config))))
+    return list(map(lambda x: float(x), filter(None, re.split(r"[^0-9.]+", config))))
 
 
 def load_list_strings(config):
@@ -24,7 +24,7 @@ def load_list_strings(config):
     Returns:
         list (list of strings)
     """
-    return list(map(lambda x: str(x).strip().lower(), filter(None, re.split(r"[^a-zA-Z0-9]+", config))))
+    return list(map(lambda x: str(x).strip().lower(), filter(None, re.split(r"[^a-zA-Z0-9.]+", config))))
 
 
 def load_bool(config):

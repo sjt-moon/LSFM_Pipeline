@@ -1,7 +1,6 @@
 from helper import loader, ConfigLoader
 from algorithms import no_landmark_nicp
-from os import listdir, walk
-from os.path import isfile, join
+from os.path import isfile
 from menpo.model import PCAModel
 import numpy as np
 from sklearn.decomposition import PCA
