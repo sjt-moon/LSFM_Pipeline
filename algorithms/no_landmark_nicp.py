@@ -129,9 +129,6 @@ class NonRigidIcp:
             iter_ += 1
             NonRigidIcp._iter_counter += 1
 
-            print(NonRigidIcp._iter_counter)
-            print(NonRigidIcp._average_regularized_loss)
-
             # find nearest neighbour and the normals
             U, tri_indices = closest_points_on_target(v_i)
 
@@ -163,8 +160,8 @@ class NonRigidIcp:
             else:
                 print("iteration level loss: {:.3f}\niteration level regularized loss: {:.3f}\n"
                       "average regularized loss//iteration: {:.3f}"
-                      .format(training_info['loss'],
-                              training_info['regularized_loss'],
+                      .format(loss,
+                              regularized_loss,
                               NonRigidIcp._average_regularized_loss
                               ), end="\r", flush=True)
 
