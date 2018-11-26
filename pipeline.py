@@ -15,7 +15,8 @@ class Pipeline:
     """
 
     def __init__(self, base_model_path, stiffness_weights=None, data_weights=None, solver=None, max_iter=None,
-                 eps=None, max_num_points=None, n_components=None, center=None, var=None, verbose=None):
+                 eps=None, max_num_points=None, n_components=None, center=None, var=None, saving_frequency=None,
+                 verbose=None):
         """
         LSFM Pipeline.
 
@@ -34,6 +35,7 @@ class Pipeline:
                 if None, all components are retained
             center (numpy.array of 3 floats): center on 3 dimensions
             var (numpy.array of 3 floats): variance on 3 dimensions
+            saving_frequency (int): every how many mesh files processed should we save the model for backup
             verbose (boolean): whether to print out training info
         """
         # TODO: @abandoned self.target = loader.get_mean_model(base_model_path)
@@ -48,8 +50,9 @@ class Pipeline:
         N_COMPONENTS = ConfigLoader.load_number(config['DEFAULT']['N_COMPONENTS'])
         CENTER = ConfigLoader.load_list_numbers(config['DEFAULT']['CENTER'])
         VAR = ConfigLoader.load_list_numbers(config['DEFAULT']['VAR'])
-        VERBOSE = ConfigLoader.load_bool(config['DEFAULT']['VERBOSE'])
+        SAVING_FREQUENCY = ConfigLoader.load_number(config['DEFAULT']['SAVING_FREQUENCY'])
         MESH_FILE_EXTENSIONS = ConfigLoader.load_list_strings(config['DEFAULT']['MESH_FILE_EXTENSIONS'])
+        VERBOSE = ConfigLoader.load_bool(config['DEFAULT']['VERBOSE'])
 
         self.verbose = verbose if verbose is not None else VERBOSE
         self.center = center if center is not None else CENTER
@@ -72,6 +75,7 @@ class Pipeline:
         self.mesh_samples = [self.target, ]
         self.training_logs = []
         self.mesh_file_extensions = MESH_FILE_EXTENSIONS
+        self.saving_frequency = saving_frequency if saving_frequency is not None else SAVING_FREQUENCY
 
     def align(self, input_path):
         """
@@ -87,9 +91,14 @@ class Pipeline:
         aligned_meshes = []
         training_logs = {}
         mesh_files = loader.get_all_mesh_files(input_path, self.mesh_file_extensions, self.verbose)
-        for mesh_file in mesh_files:
+        for index, mesh_file in enumerate(mesh_files, 1):
             if self.verbose:
                 print("\nloading mesh file {}\n".format(mesh_file))
+            if index % self.saving_frequency == 0:
+                filename = str(index) + ".pkl"
+                if self.verbose:
+                    print("saving model into {}...".format(filename))
+                loader.save(self, filename)
             source = loader.get_mesh(mesh_file, self.center, self.var)
             aligned_mesh, training_log = self.nicp_process.non_rigid_icp(source, self.target)
             aligned_meshes.append(aligned_mesh)

@@ -7,6 +7,7 @@ from menpo.shape import TriMesh
 import menpo3d
 from os import walk
 from os.path import isfile, join, abspath
+import pickle
 
 from helper import rescale
 
@@ -146,4 +147,15 @@ def _get_all_mesh_files(input_path, file_extension):
     return list(filter(lambda file: isfile(file) and file.endswith("." + file_extension),
                        map(lambda obj_file: abspath(obj_file),
                            [join(root, file) for root, _, files in walk(input_path) for file in files])))
+
+
+def save(model, file_name):
+    """
+    Save the model.
+
+    Parameters:
+        model (any type): trained model to be saved
+        file_name (string): save model and name it file_name
+    """
+    pickle.dump(model, open(file_name, 'wb'))
 

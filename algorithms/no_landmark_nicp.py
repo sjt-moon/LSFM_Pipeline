@@ -17,6 +17,13 @@ class NonRigidIcp:
         eps (float): training precision
         verbose (boolean): whether to print out training info
     """
+
+    # count number of iterations processed by NonRigidIcp
+    _iter_counter = 0
+
+    # average regularized loss per iteration
+    _average_regularized_loss = 0
+
     def __init__(self, stiffness_weights=(50, 20, 5, 2, 0.8, 0.5, 0.35, 0.2), data_weights=None,
                  solver="umfpack", max_iter=10, eps=1e-3, verbose=True):
         """
@@ -67,13 +74,13 @@ class NonRigidIcp:
         closest_points_on_target = VTKClosestPointLocator(target_vtk)
 
         # log
-        training_info = {'loss':[], 'regularized_loss':[]}
+        training_info = {'loss': [], 'regularized_loss': []}
 
         for i, (alpha, gamma) in enumerate(zip(self.stiffness_weights, self.data_weights), 1):
             if self.verbose:
                 print("Epoch " + str(i) + " with stiffness " + str(alpha))
             transformed_mesh, err_info = self._non_rigid_icp_iter(transformed_mesh, target, closest_points_on_target,
-                                                        M_kron_G, alpha, gamma)
+                                                                  M_kron_G, alpha, gamma)
             for k in training_info.keys():
                 training_info[k] += err_info[k]
 
@@ -120,6 +127,8 @@ class NonRigidIcp:
         iter_ = 0
         while iter_ < self.max_iter:
             iter_ += 1
+            NonRigidIcp._iter_counter += 1
+
             # find nearest neighbour and the normals
             U, tri_indices = closest_points_on_target(v_i)
 
@@ -142,9 +151,19 @@ class NonRigidIcp:
             training_info['loss'].append(loss)
             training_info['regularized_loss'].append(regularized_loss)
 
+            NonRigidIcp._average_regularized_loss = (NonRigidIcp._iter_counter - 1) * \
+                                                    NonRigidIcp._average_regularized_loss / NonRigidIcp._iter_counter
+
             if self.verbose:
                 info = ' - {} loss: {:.3f} regularized_loss: {:.3f}  '.format(iter_, loss, regularized_loss)
                 print(info)
+            else:
+                print("iteration level loss: {:.3f}\niteration level regularized loss: {:.3f}\n"
+                      "average regularized loss//iteration: {:.3f}"
+                      .format(training_info['loss'],
+                              training_info['regularized_loss'],
+                              NonRigidIcp._average_regularized_loss
+                              ), end="\r", flush=True)
 
             if regularized_loss < self.eps:
                 break
