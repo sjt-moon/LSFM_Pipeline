@@ -22,7 +22,7 @@ class NonRigidIcp:
     _iter_counter = 0
 
     # average regularized loss per iteration
-    _average_regularized_loss = 0
+    _average_regularized_loss = 0.0
 
     def __init__(self, stiffness_weights=(50, 20, 5, 2, 0.8, 0.5, 0.35, 0.2), data_weights=None,
                  solver="umfpack", max_iter=10, eps=1e-3, verbose=True):
@@ -128,6 +128,9 @@ class NonRigidIcp:
         while iter_ < self.max_iter:
             iter_ += 1
             NonRigidIcp._iter_counter += 1
+
+            print(NonRigidIcp._iter_counter)
+            print(NonRigidIcp._average_regularized_loss)
 
             # find nearest neighbour and the normals
             U, tri_indices = closest_points_on_target(v_i)
