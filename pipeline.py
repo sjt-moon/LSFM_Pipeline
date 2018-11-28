@@ -91,6 +91,7 @@ class Pipeline:
         aligned_meshes = []
         training_logs = {}
         mesh_files = loader.get_all_mesh_files(input_path, self.mesh_file_extensions, self.verbose)
+        self.nicp_process.set_num_of_meshes(len(mesh_files))
         for index, mesh_file in enumerate(mesh_files, 1):
             if self.verbose:
                 print("\nloading mesh file {}\n".format(mesh_file))

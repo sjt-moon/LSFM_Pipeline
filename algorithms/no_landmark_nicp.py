@@ -17,6 +17,11 @@ class NonRigidIcp:
         eps (float): training precision
         verbose (boolean): whether to print out training info
     """
+    # total number of mesh files
+    _num_of_meshes = None
+
+    # count number of mesh files processed by NonRigidIcp
+    _mesh_counter = 0
 
     # count number of iterations processed by NonRigidIcp
     _iter_counter = 0
@@ -59,6 +64,9 @@ class NonRigidIcp:
             transformed_mesh (menpo.shape.mesh.base.TriMesh): transformed source mesh
             training_info (dict): containing 3 lists of loss/regularized_err/err while training
         """
+        # one more mesh file processed
+        NonRigidIcp._mesh_counter += 1
+
         n_dims = source.n_dims
         transformed_mesh = source
 
@@ -158,10 +166,21 @@ class NonRigidIcp:
                 info = ' - {} loss: {:.3f} regularized_loss: {:.3f}  '.format(iter_, loss, regularized_loss)
                 print(info)
             else:
-                print("iteration level loss: {:.3f}\niteration level regularized loss: {:.3f}\n"
-                      "average regularized loss//iteration: {:.3f}"
-                      .format(loss,
-                              regularized_loss,
+                progress_bar = "["
+                if NonRigidIcp._num_of_meshes is not None:
+                    progress = int(10.0 * NonRigidIcp._mesh_counter / NonRigidIcp._num_of_meshes)
+                    for _ in range(progress-1):
+                        progress_bar += "="
+                    progress_bar += ">"
+                    for _ in range(10 - progress - 1):
+                        progress_bar += "."
+                    progress_bar += "] " + str(NonRigidIcp._mesh_counter) + "/" + str(NonRigidIcp._num_of_meshes)
+                else:
+                    progress_bar += str(NonRigidIcp._num_of_meshes) + "]"
+
+                print("loss @ this iter: {:.3f} | "
+                      "loss/iter: {:.3f} | " + progress_bar
+                      .format(regularized_loss,
                               NonRigidIcp._average_regularized_loss
                               ), end="\r", flush=True)
 
@@ -238,3 +257,7 @@ class NonRigidIcp:
             hash (string)
         """
         return ' '.join([str(x) for x in array])
+
+    @classmethod
+    def set_num_of_meshes(cls, num_of_meshes):
+        cls._num_of_meshes = num_of_meshes
