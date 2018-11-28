@@ -1,11 +1,13 @@
 from helper import loader, ConfigLoader
 from algorithms import no_landmark_nicp
-from os.path import isfile
+from os.path import isfile, exists, join
+from os import listdir, makedirs, remove
 from menpo.model import PCAModel
 import numpy as np
 from sklearn.decomposition import PCA
 from menpo.shape.mesh.base import TriMesh
 from functools import reduce
+import pickle
 import configparser
 
 
@@ -14,14 +16,15 @@ class Pipeline:
     LSFM Pipeline.
     """
 
-    def __init__(self, base_model_path, stiffness_weights=None, data_weights=None, solver=None, max_iter=None,
-                 eps=None, max_num_points=None, n_components=None, center=None, var=None, saving_frequency=None,
-                 verbose=None):
+    def __init__(self, base_model_path, output_path=None, stiffness_weights=None, data_weights=None, solver=None,
+                 max_iter=None, eps=None, max_num_points=None, n_components=None, center=None, var=None,
+                 saving_frequency=None, is_preemptive=None, verbose=None):
         """
         LSFM Pipeline.
 
         Parameters:
             base_model_path (string): target mesh path
+            output_path (string): save temporary/final results to that path
             stiffness_weights (int array or None): stiffness for each iteration
             data_weights (int array or None): data weights for each iteration
             solver (string): solver for linear equations like Ax = B
@@ -36,12 +39,15 @@ class Pipeline:
             center (numpy.array of 3 floats): center on 3 dimensions
             var (numpy.array of 3 floats): variance on 3 dimensions
             saving_frequency (int): every how many mesh files processed should we save the model for backup
+            is_preemptive (boolean): resume previous running or not, if true, load the most-recent model saved from
+                the self.output_path
             verbose (boolean): whether to print out training info
         """
         # TODO: @abandoned self.target = loader.get_mean_model(base_model_path)
         # load defaults from config.ini
         config = Pipeline.configuration_check()
 
+        DEFAULT_OUTPUT_PATH = config['DEFAULT']['DEFAULT_OUTPUT_PATH']
         DEFAULT_STIFFNESS_WEIGHTS = ConfigLoader.load_list_numbers(config['DEFAULT']['DEFAULT_STIFFNESS_WEIGHTS'])
         SOLVER = config['DEFAULT']['SOLVER']
         MAX_ITER = int(ConfigLoader.load_number(config['DEFAULT']['MAX_ITER']))
@@ -52,6 +58,7 @@ class Pipeline:
         VAR = ConfigLoader.load_list_numbers(config['DEFAULT']['VAR'])
         SAVING_FREQUENCY = ConfigLoader.load_number(config['DEFAULT']['SAVING_FREQUENCY'])
         MESH_FILE_EXTENSIONS = ConfigLoader.load_list_strings(config['DEFAULT']['MESH_FILE_EXTENSIONS'])
+        IS_PREEMPTIVE = ConfigLoader.load_bool(config['DEFAULT']['IS_PREEMPTIVE'])
         VERBOSE = ConfigLoader.load_bool(config['DEFAULT']['VERBOSE'])
 
         self.verbose = verbose if verbose is not None else VERBOSE
@@ -75,7 +82,14 @@ class Pipeline:
         self.mesh_samples = [self.target, ]
         self.training_logs = []
         self.mesh_file_extensions = MESH_FILE_EXTENSIONS
+
         self.saving_frequency = saving_frequency if saving_frequency is not None else SAVING_FREQUENCY
+        self.output_path = output_path if output_path is not None else DEFAULT_OUTPUT_PATH
+        if not exists(self.output_path):
+            makedirs(self.output_path, exist_ok=True)
+
+        self.is_preemptive = is_preemptive if is_preemptive is not None else IS_PREEMPTIVE
+        self.processed_mesh_files = set()
 
     def align(self, input_path):
         """
@@ -88,9 +102,29 @@ class Pipeline:
             aligned_meshes (list of TriMesh): aligned meshes
             trainging_logs (dict of dict): key is mesh file name, value is training logs for that alignment
         """
+        # load the most recent saved model
+        if self.output_path is not None and exists(self.output_path):
+            saved_models = [file for file in listdir(self.output_path) if isfile(file) and file.endswith(".pkl")]
+            if len(saved_models) > 0:
+                # find the most recent saved model
+                recent_model = max(saved_models)
+                recent_model_path = join(self.output_path, recent_model)
+
+                # remove all the outdated saved models except the current one
+                for saved_model in saved_models:
+                    if saved_model == recent_model:
+                        continue
+                    remove(join(self.output_path, saved_model))
+
+                if self.is_preemptive:
+                    print("resume from saved model {}".format(recent_model_path))
+                    self = pickle.load(open(recent_model_path, 'rb'))
+
         aligned_meshes = []
         training_logs = {}
         mesh_files = loader.get_all_mesh_files(input_path, self.mesh_file_extensions, self.verbose)
+        mesh_files = list(filter(lambda file: file not in self.processed_mesh_files, mesh_files))
+
         self.nicp_process.set_num_of_meshes(len(mesh_files))
         for index, mesh_file in enumerate(mesh_files, 1):
             if self.verbose:
@@ -104,6 +138,15 @@ class Pipeline:
             aligned_mesh, training_log = self.nicp_process.non_rigid_icp(source, self.target)
             aligned_meshes.append(aligned_mesh)
             training_logs[mesh_file] = training_log
+            self.processed_mesh_files.add(mesh_file)
+
+        # save the final round
+        if len(mesh_files) % self.saving_frequency != 0:
+            filename = str(len(mesh_files)) + ".pkl"
+            if self.verbose:
+                print("saving model into {}...".format(filename))
+                loader.save(self, filename)
+
         if self.verbose:
             print("\n{} meshes aligned to the target".format(len(aligned_meshes)))
             print("average loss: {:.3f}\naverage regularized loss: {:.3f}\n"
