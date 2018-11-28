@@ -178,8 +178,9 @@ class NonRigidIcp:
                 else:
                     progress_bar += str(NonRigidIcp._num_of_meshes) + "]"
 
-                print("loss @ this iter: {:.3f} | "
-                      "loss/iter: {:.3f} | " + progress_bar
+                print(("loss @ this iter: {:.3f} | "
+                      "loss/iter: {:.3f} | "
+                       + progress_bar)
                       .format(regularized_loss,
                               NonRigidIcp._average_regularized_loss
                               ), end="\r", flush=True)
