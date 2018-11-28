@@ -4,6 +4,8 @@ import scipy.sparse as sp
 from menpo3d.vtkutils import trimesh_to_vtk, VTKClosestPointLocator
 import warnings
 from helper import math_helper
+import time
+import datetime
 
 
 class NonRigidIcp:
@@ -52,6 +54,8 @@ class NonRigidIcp:
         self.eps = eps
         self.verbose = verbose
 
+        self._expected_remaining_time = None
+
     def non_rigid_icp(self, source, target):
         """
         Non-rigid icp algorithm ignoring landmarks.
@@ -64,6 +68,8 @@ class NonRigidIcp:
             transformed_mesh (menpo.shape.mesh.base.TriMesh): transformed source mesh
             training_info (dict): containing 3 lists of loss/regularized_err/err while training
         """
+        start_time = time.time()
+
         # one more mesh file processed
         NonRigidIcp._mesh_counter += 1
 
@@ -92,10 +98,18 @@ class NonRigidIcp:
             for k in training_info.keys():
                 training_info[k] += err_info[k]
 
+        end_time = time.time()
+        mesh_training_time = end_time - start_time
+        if NonRigidIcp._num_of_meshes is not None:
+            self._expected_remaining_time = str(datetime.timedelta(seconds=mesh_training_time * (NonRigidIcp._num_of_meshes - NonRigidIcp._mesh_counter)))
+        else:
+            self._expected_remaining_time = str(mesh_training_time) + " x # of mesh files"
+
         if self.verbose:
-            print("average loss: {:.3f}\naverage regularized loss: {:.3f}"
+            print("average loss: {:.3f}\naverage regularized loss: {:.3f}\nexpected remaining time: {}"
                   .format(np.mean(training_info['loss']),
-                          np.mean(training_info['regularized_loss'])
+                          np.mean(training_info['regularized_loss']),
+                          self._expected_remaining_time
                           )
                   )
 
@@ -177,6 +191,8 @@ class NonRigidIcp:
                     progress_bar += "] " + str(NonRigidIcp._mesh_counter) + "/" + str(NonRigidIcp._num_of_meshes)
                 else:
                     progress_bar += str(NonRigidIcp._num_of_meshes) + "]"
+                if self._expected_remaining_time is not None:
+                    progress_bar += " | remaining time: " + self._expected_remaining_time
 
                 print(("loss @ this iter: {:.3f} | "
                       "loss/iter: {:.3f} | "
