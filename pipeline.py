@@ -113,18 +113,22 @@ class Pipeline:
 
                 # remove all the outdated saved models except the current one
                 for saved_model in saved_models:
-                    if saved_model == recent_model:
+                    if self.is_preemptive and saved_model == recent_model:
                         continue
                     remove(join(self.output_path, saved_model))
 
                 if self.is_preemptive:
                     print("resume from saved model {}".format(recent_model_path))
                     self = pickle.load(open(recent_model_path, 'rb'))
+                else:
+                    self.processed_mesh_files = set()
 
         mesh_files = loader.get_all_mesh_files(input_path, self.mesh_file_extensions, self.verbose)
         mesh_files = list(filter(lambda file: file not in self.processed_mesh_files, mesh_files))
 
         self.nicp_process.set_num_of_meshes(len(mesh_files))
+        self.nicp_process.set_iter_counter(0)
+
         for index, mesh_file in enumerate(mesh_files, 1):
             if self.verbose:
                 print("\nloading mesh file {}\n".format(mesh_file))
@@ -167,7 +171,7 @@ class Pipeline:
             trainging_logs (dict of dict): training log while aligning, key is mesh file name,
                 value is training logs for that alignment
         """
-        # confirm resume
+        # confirm resume (the first time calling this will not trigger preemptive)
         if len(self.processed_mesh_files) > 0 and self.is_preemptive:
             confirm_resume = str(input("confirm to resume[y/n]: "))
             if confirm_resume.startswith("y"):

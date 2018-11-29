@@ -19,9 +19,11 @@ class NonRigidIcp:
         eps (float): training precision
         verbose (boolean): whether to print out training info
     """
+    # reset when resume
     # total number of mesh files
     _num_of_meshes = None
 
+    # reset as 0 when resume
     # count number of mesh files processed by NonRigidIcp
     _mesh_counter = 0
 
@@ -278,3 +280,7 @@ class NonRigidIcp:
     @classmethod
     def set_num_of_meshes(cls, num_of_meshes):
         cls._num_of_meshes = num_of_meshes
+
+    @classmethod
+    def set_iter_counter(cls, iter_counter):
+        cls._iter_counter = iter_counter
