@@ -80,7 +80,8 @@ class Pipeline:
                                                          data_weights=self.data_weights, solver=self.solver,
                                                          max_iter=self.max_iter, eps=self.eps, verbose=self.verbose)
         self.mesh_samples = [self.target, ]
-        self.training_logs = []
+        self.training_logs = {}
+
         self.mesh_file_extensions = MESH_FILE_EXTENSIONS
 
         self.saving_frequency = saving_frequency if saving_frequency is not None else SAVING_FREQUENCY
@@ -120,8 +121,6 @@ class Pipeline:
                     print("resume from saved model {}".format(recent_model_path))
                     self = pickle.load(open(recent_model_path, 'rb'))
 
-        aligned_meshes = []
-        training_logs = {}
         mesh_files = loader.get_all_mesh_files(input_path, self.mesh_file_extensions, self.verbose)
         mesh_files = list(filter(lambda file: file not in self.processed_mesh_files, mesh_files))
 
@@ -136,8 +135,8 @@ class Pipeline:
                 loader.save(self, filename)
             source = loader.get_mesh(mesh_file, self.center, self.var)
             aligned_mesh, training_log = self.nicp_process.non_rigid_icp(source, self.target)
-            aligned_meshes.append(aligned_mesh)
-            training_logs[mesh_file] = training_log
+            self.mesh_samples.append(aligned_mesh)
+            self.training_logs[mesh_file] = training_log
             self.processed_mesh_files.add(mesh_file)
 
         # save the final round
@@ -148,13 +147,13 @@ class Pipeline:
                 loader.save(self, filename)
 
         if self.verbose:
-            print("\n{} meshes aligned to the target".format(len(aligned_meshes)))
+            print("\n{} meshes aligned to the target".format(len(self.mesh_samples) - 1))
             print("average loss: {:.3f}\naverage regularized loss: {:.3f}\n"
                   .format(
-                np.mean(reduce(lambda x, y: x + y, map(lambda x: x['loss'], training_logs.values()))),
-                np.mean(reduce(lambda x, y: x + y, map(lambda x: x['regularized_loss'], training_logs.values())))
+                np.mean(reduce(lambda x, y: x + y, map(lambda x: x['loss'], self.training_logs.values()))),
+                np.mean(reduce(lambda x, y: x + y, map(lambda x: x['regularized_loss'], self.training_logs.values())))
             ))
-        return aligned_meshes, training_logs
+        return self.mesh_samples, self.training_logs
 
     def run(self, input_path):
         """
