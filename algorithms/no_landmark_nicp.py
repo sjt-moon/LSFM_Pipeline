@@ -19,11 +19,11 @@ class NonRigidIcp:
         eps (float): training precision
         verbose (boolean): whether to print out training info
     """
-    # reset when resume
+    # reset when resume, as no effect on loss
     # total number of mesh files
     _num_of_meshes = None
 
-    # reset as 0 when resume
+    # reset as 0 when resume, as no effect on loss
     # count number of mesh files processed by NonRigidIcp
     _mesh_counter = 0
 

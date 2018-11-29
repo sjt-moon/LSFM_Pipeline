@@ -103,25 +103,31 @@ class Pipeline:
             aligned_meshes (list of TriMesh): aligned meshes
             trainging_logs (dict of dict): key is mesh file name, value is training logs for that alignment
         """
-        # load the most recent saved model
-        if self.output_path is not None and exists(self.output_path):
-            saved_models = [file for file in listdir(self.output_path) if isfile(file) and file.endswith(".pkl")]
-            if len(saved_models) > 0:
-                # find the most recent saved model
-                recent_model = max(saved_models)
-                recent_model_path = join(self.output_path, recent_model)
+        saved_models = [file for file in listdir(self.output_path) if isfile(file) and file.endswith(".pkl")]
+        if not self.is_preemptive:
+            # remove all the previously saved models
+            for saved_model in saved_models:
+                remove(join(self.output_path, saved_model))
 
-                # remove all the outdated saved models except the current one
-                for saved_model in saved_models:
-                    if self.is_preemptive and saved_model == recent_model:
-                        continue
-                    remove(join(self.output_path, saved_model))
+            # reset static variables
+            self.processed_mesh_files = set()
 
-                if self.is_preemptive:
-                    print("resume from saved model {}".format(recent_model_path))
-                    self = pickle.load(open(recent_model_path, 'rb'))
-                else:
-                    self.processed_mesh_files = set()
+        elif len(saved_models) > 0:
+            # find the most recent saved model
+            recent_model = max(saved_models)
+            recent_model_path = join(self.output_path, recent_model)
+
+            # remove all the outdated saved models except the current one
+            for saved_model in saved_models:
+                if saved_model == recent_model:
+                    continue
+                remove(join(self.output_path, saved_model))
+
+            print("resume from saved model {}".format(recent_model_path))
+            self = pickle.load(open(recent_model_path, 'rb'))
+
+        else:
+            self.processed_mesh_files = set()
 
         mesh_files = loader.get_all_mesh_files(input_path, self.mesh_file_extensions, self.verbose)
         mesh_files = list(filter(lambda file: file not in self.processed_mesh_files, mesh_files))
