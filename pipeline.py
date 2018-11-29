@@ -130,7 +130,7 @@ class Pipeline:
             if self.verbose:
                 print("\nloading mesh file {}\n".format(mesh_file))
             if index % self.saving_frequency == 0:
-                filename = str(index) + ".pkl"
+                filename = join(self.output_path, str(index) + ".pkl")
                 if self.verbose:
                     print("saving model into {}...".format(filename))
                 loader.save(self, filename)
@@ -142,7 +142,7 @@ class Pipeline:
 
         # save the final round
         if len(mesh_files) % self.saving_frequency != 0:
-            filename = str(len(mesh_files)) + ".pkl"
+            filename = join(self.output_path, str(len(mesh_files)) + ".pkl")
             if self.verbose:
                 print("saving model into {}...".format(filename))
                 loader.save(self, filename)
@@ -168,6 +168,15 @@ class Pipeline:
             trainging_logs (dict of dict): training log while aligning, key is mesh file name,
                 value is training logs for that alignment
         """
+        # confirm resume
+        if len(self.processed_mesh_files) > 0 and self.is_preemptive:
+            confirm_resume = str(input("confirm to resume[y/n]: "))
+            if confirm_resume.startswith("y"):
+                self.set_is_preemptive(True)
+                print("resume from previous {} processed mesh files".format(len(self.processed_mesh_files)))
+            else:
+                self.set_is_preemptive(False)
+
         aligned_meshes, training_logs = self.align(input_path)
         aligned_meshes += [self.target]
         pca_meshes = self.prune_on_num_points(aligned_meshes)
@@ -256,3 +265,6 @@ class Pipeline:
         config.read("config.ini")
 
         return config
+
+    def set_is_preemptive(self, is_preemptive):
+        self.is_preemptive = is_preemptive
