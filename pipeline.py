@@ -135,6 +135,7 @@ class Pipeline:
                 print("resume from saved model {}".format(recent_model_path))
                 self = pickle.load(open(recent_model_path, 'rb'))
                 print("resume from previous {} processed mesh files".format(len(self.processed_mesh_files)))
+                break
 
             else:
                 # even if is_preemptive is True,
