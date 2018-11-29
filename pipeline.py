@@ -103,7 +103,7 @@ class Pipeline:
             aligned_meshes (list of TriMesh): aligned meshes
             trainging_logs (dict of dict): key is mesh file name, value is training logs for that alignment
         """
-        saved_models = [file for file in listdir(self.output_path) if isfile(file) and file.endswith(".pkl")]
+        saved_models = [file for file in listdir(self.output_path) if isfile(join(self.output_path, file)) and file.endswith(".pkl")]
 
         for _ in range(2):
             if not self.is_preemptive:
