@@ -104,30 +104,43 @@ class Pipeline:
             trainging_logs (dict of dict): key is mesh file name, value is training logs for that alignment
         """
         saved_models = [file for file in listdir(self.output_path) if isfile(file) and file.endswith(".pkl")]
-        if not self.is_preemptive:
-            # remove all the previously saved models
-            for saved_model in saved_models:
-                remove(join(self.output_path, saved_model))
 
-            # reset static variables
-            self.processed_mesh_files = set()
+        for _ in range(2):
+            if not self.is_preemptive:
+                # remove all the previously saved models
+                for saved_model in saved_models:
+                    remove(join(self.output_path, saved_model))
 
-        elif len(saved_models) > 0:
-            # find the most recent saved model
-            recent_model = max(saved_models)
-            recent_model_path = join(self.output_path, recent_model)
+                # reset static variables
+                self.processed_mesh_files = set()
+                break
 
-            # remove all the outdated saved models except the current one
-            for saved_model in saved_models:
-                if saved_model == recent_model:
+            elif len(saved_models) > 0:
+                # confirm resume
+                confirm_resume = str(input("confirm to resume[y/n]: "))
+                if not confirm_resume.startswith("y"):
+                    self.is_preemptive = False
                     continue
-                remove(join(self.output_path, saved_model))
 
-            print("resume from saved model {}".format(recent_model_path))
-            self = pickle.load(open(recent_model_path, 'rb'))
+                # find the most recent saved model
+                recent_model = max(saved_models)
+                recent_model_path = join(self.output_path, recent_model)
 
-        else:
-            self.processed_mesh_files = set()
+                # remove all the outdated saved models except the current one
+                for saved_model in saved_models:
+                    if saved_model == recent_model:
+                        continue
+                    remove(join(self.output_path, saved_model))
+
+                print("resume from saved model {}".format(recent_model_path))
+                self = pickle.load(open(recent_model_path, 'rb'))
+                print("resume from previous {} processed mesh files".format(len(self.processed_mesh_files)))
+
+            else:
+                # even if is_preemptive is True,
+                # without saved models, this will not trigger preemptive loading
+                self.processed_mesh_files = set()
+                break
 
         mesh_files = loader.get_all_mesh_files(input_path, self.mesh_file_extensions, self.verbose)
         mesh_files = list(filter(lambda file: file not in self.processed_mesh_files, mesh_files))
@@ -177,15 +190,6 @@ class Pipeline:
             trainging_logs (dict of dict): training log while aligning, key is mesh file name,
                 value is training logs for that alignment
         """
-        # confirm resume (the first time calling this will not trigger preemptive)
-        if len(self.processed_mesh_files) > 0 and self.is_preemptive:
-            confirm_resume = str(input("confirm to resume[y/n]: "))
-            if confirm_resume.startswith("y"):
-                self.set_is_preemptive(True)
-                print("resume from previous {} processed mesh files".format(len(self.processed_mesh_files)))
-            else:
-                self.set_is_preemptive(False)
-
         aligned_meshes, training_logs = self.align(input_path)
         aligned_meshes += [self.target]
         pca_meshes = self.prune_on_num_points(aligned_meshes)
