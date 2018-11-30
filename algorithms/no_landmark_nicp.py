@@ -162,10 +162,10 @@ class NonRigidIcp:
             to_stack_A = [alpha_M_kron_G, D]
             to_stack_B = [np.zeros((alpha_M_kron_G.shape[0], n_dims)), U]
 
-            A = np.array(sp.vstack(to_stack_A).tocsr().todense())
-            B = np.array(sp.vstack(to_stack_B).tocsr().todense())
+            A = sp.vstack(to_stack_A).tocsr()
+            B = sp.vstack(to_stack_B).tocsr()
 
-            X = math_helper.Solver.linear_solver(A.T @ A, A.T @ B, self.solver)
+            X = math_helper.Solver.linear_solver(A, B, self.solver)
 
             # deform template
             v_i = np.array(D.dot(X))
