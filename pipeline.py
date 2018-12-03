@@ -153,10 +153,16 @@ class Pipeline:
             if self.verbose:
                 print("\nloading mesh file {}\n".format(mesh_file))
             if index % self.saving_frequency == 0:
-                filename = join(self.output_path, str(index) + ".pkl")
+                file = str(index) + ".pkl"
+                filename = join(self.output_path, file)
                 if self.verbose:
                     print("saving model into {}...".format(filename))
                 loader.save(self, filename)
+                # remove all previous models
+                removed_models = [f for f in listdir(self.output_path) if f.endswith(".pkl") and f != file]
+                for f in removed_models:
+                    remove(join(self.output_path, f))
+
             source = loader.get_mesh(mesh_file, self.center, self.var)
             aligned_mesh, training_log = self.nicp_process.non_rigid_icp(source, self.target)
             self.mesh_samples.append(aligned_mesh)
@@ -165,10 +171,15 @@ class Pipeline:
 
         # save the final round
         if len(mesh_files) % self.saving_frequency != 0:
-            filename = join(self.output_path, str(len(mesh_files)) + ".pkl")
+            file = str(len(mesh_files)) + ".pkl"
+            filename = join(self.output_path, file)
             if self.verbose:
                 print("saving model into {}...".format(filename))
-                loader.save(self, filename)
+            loader.save(self, filename)
+            # remove all previous models
+            removed_models = [f for f in listdir(self.output_path) if f.endswith(".pkl") and f != file]
+            for f in removed_models:
+                remove(join(self.output_path, f))
 
         if self.verbose:
             print("\n{} meshes aligned to the target".format(len(self.mesh_samples) - 1))
