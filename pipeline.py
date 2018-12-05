@@ -222,7 +222,7 @@ class Pipeline:
 
         # it's possible that different meshes have different number of points
         # for meshes with points fewer than N, pad zeros
-        N, M = max(aligned_meshes, key=lambda x: x.points.shape[0]), len(aligned_meshes)
+        N, M = max(aligned_meshes, key=lambda x: x.points.shape[0]).points.shape[0], len(aligned_meshes)
         tmp = self.max_num_points
         if self.max_num_points > N or self.max_num_points > M:
             print("PCA error, max number of points is too large, use {} points instead".format(min(M, N)))
