@@ -206,8 +206,6 @@ class Pipeline:
         aligned_meshes += [self.target]
         pca_meshes = self.prune_on_num_points(aligned_meshes)
         lsfm, logs = self.pca_prune(pca_meshes), training_logs
-        loader.save(lsfm, join(self.output_path, 'lsfm'))
-        loader.save(logs, join(self,object, 'log'))
         return lsfm, logs
 
     def prune_on_num_points(self, aligned_meshes):
@@ -221,7 +219,10 @@ class Pipeline:
             pruned TriMeshes
         """
         assert len(aligned_meshes) > 0, "@prune_on_num_points, no input meshes"
-        N, M = aligned_meshes[0].points.shape[0], len(aligned_meshes)
+
+        # it's possible that different meshes have different number of points
+        # for meshes with points fewer than N, pad zeros
+        N, M = max(aligned_meshes, key=lambda x: x.points.shape[0]), len(aligned_meshes)
         tmp = self.max_num_points
         if self.max_num_points > N or self.max_num_points > M:
             print("PCA error, max number of points is too large, use {} points instead".format(min(M, N)))
@@ -235,9 +236,10 @@ class Pipeline:
         # PCA on number of points for each cloud
         X, Y, Z = [], [], []
         for aligned_mesh in aligned_meshes:
-            X.append(aligned_mesh.points[:, 0])
-            Y.append(aligned_mesh.points[:, 1])
-            Z.append(aligned_mesh.points[:, 2])
+            xi, yi, zi = aligned_mesh.points[:, 0], aligned_mesh.points[:, 1], aligned_mesh.points[:, 2]
+            X.append(np.concatenate(xi, np.zeros(N - len(xi))))
+            Y.append(np.concatenate(xi, np.zeros(N - len(yi))))
+            Z.append(np.concatenate(xi, np.zeros(N - len(zi))))
         # (M, N) matrices, N points M persons
         X, Y, Z = np.array(X), np.array(Y), np.array(Z)
         pca = PCA(n_components=self.max_num_points)
