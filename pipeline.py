@@ -241,7 +241,7 @@ class Pipeline:
             Y.append(np.concatenate([xi, np.zeros(N - len(yi))]))
             Z.append(np.concatenate([xi, np.zeros(N - len(zi))]))
         # (M, N) matrices, N points M persons
-        X, Y, Z = np.array(X), np.array(Y), np.array(Z)
+        X, Y, Z = np.asarray(X), np.asarray(Y), np.asarray(Z)
         pca = PCA(n_components=self.max_num_points)
         X = pca.fit_transform(X)
         Y = pca.fit_transform(Y)
