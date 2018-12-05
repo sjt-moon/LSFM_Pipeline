@@ -237,9 +237,9 @@ class Pipeline:
         X, Y, Z = [], [], []
         for aligned_mesh in aligned_meshes:
             xi, yi, zi = aligned_mesh.points[:, 0], aligned_mesh.points[:, 1], aligned_mesh.points[:, 2]
-            X.append(np.concatenate(xi, np.zeros(N - len(xi))))
-            Y.append(np.concatenate(xi, np.zeros(N - len(yi))))
-            Z.append(np.concatenate(xi, np.zeros(N - len(zi))))
+            X.append(np.concatenate([xi, np.zeros(N - len(xi))]))
+            Y.append(np.concatenate([xi, np.zeros(N - len(yi))]))
+            Z.append(np.concatenate([xi, np.zeros(N - len(zi))]))
         # (M, N) matrices, N points M persons
         X, Y, Z = np.array(X), np.array(Y), np.array(Z)
         pca = PCA(n_components=self.max_num_points)
