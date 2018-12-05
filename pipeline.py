@@ -205,7 +205,10 @@ class Pipeline:
         aligned_meshes, training_logs = self.align(input_path)
         aligned_meshes += [self.target]
         pca_meshes = self.prune_on_num_points(aligned_meshes)
-        return self.pca_prune(pca_meshes), training_logs
+        lsfm, logs = self.pca_prune(pca_meshes), training_logs
+        loader.save(lsfm, join(self.output_path, 'lsfm'))
+        loader.save(logs, join(self,object, 'log'))
+        return lsfm, logs
 
     def prune_on_num_points(self, aligned_meshes):
         """
