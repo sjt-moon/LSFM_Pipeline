@@ -250,10 +250,11 @@ class Pipeline:
         # generate TriMeshes
         pca_meshes = []
         for x, y, z in zip(X, Y, Z):
-            pca_meshes.append(TriMesh(points=np.vstack((x, y, z)).T))
+            pca_meshes.append(TriMesh(points=np.hstack((x, y, z))))
 
         self.max_num_points = tmp
-
+        if self.verbose:
+            print("first PCA phase done, {} meshes with each retaining {} points".format(X.shape[0], X.shape[1]))
         return pca_meshes
 
     def pca_prune(self, meshes):
