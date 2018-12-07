@@ -305,11 +305,13 @@ class Pipeline:
         print("before trimming on number of points for each mesh, it contains at most {} points\\mesh\n"
               "after trimming, it contains {} points\\mesh"
               .format(N, K))
+
         trimmed_meshes = []
-        logger = Logger.ProgressLogger(len(meshes))
+        trilist = np.asarray([[int(3 * i), int(3 * i + 1), int(3 * i + 2)] for i in range(int(K / 3))])
+        logger = Logger.ProgressLogger(len(meshes), "PCA Progress")
         for x in meshes:
             logger.log()
-            trimmed_meshes.append(TriMesh(points=Pipeline._trim_points(x.points, K), trilist=None))
+            trimmed_meshes.append(TriMesh(points=Pipeline._trim_points(x.points, K), trilist=trilist))
         logger.log()
         return trimmed_meshes
 

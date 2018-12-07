@@ -16,7 +16,7 @@ class ProgressLogger:
         assert total > 0, "negative total number of trials"
         self.cnt = 0
         self.total = total
-        self.annotation = annotation + " " if annotation is not None else "Progress "
+        self.annotation = annotation.strip() + " " if annotation is not None else "Progress "
         self.length = length if length is not None else 100
         self.progress_bar = "[" + "." * self.length + "] {}/{}"
 
