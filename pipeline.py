@@ -1,4 +1,4 @@
-from helper import loader, ConfigLoader
+from helper import loader, ConfigLoader, Logger
 from algorithms import no_landmark_nicp
 from os.path import isfile, exists, join
 from os import listdir, makedirs, remove
@@ -276,13 +276,12 @@ class Pipeline:
             print('\nRetaining {:.2%} of eigenvalues keeps {} components'.format(
                 self.n_components, n_comps_retained))
         pca_model.trim_components(self.n_components)
-        if self.verbose:
-            print("Final PCA Model:\n# of components: {}\n# of points for each mesh (3 dims total): {}"
-                  "\neigen value respective ratios: {}\neigen value accumulative ratios: {}"
-                  .format(str(pca_model.components.shape[0]),
-                          str(pca_model.components.shape[1]),
-                          str(pca_model.eigenvalues_ratio()),
-                          str(pca_model.eigenvalues_cumulative_ratio())))
+        print("Final PCA Model:\n# of components: {}\n# of points for each mesh (3 dims total): {}"
+                "\neigen value respective ratios: {}\neigen value accumulative ratios: {}"
+              .format(str(pca_model.components.shape[0]),
+                      str(pca_model.components.shape[1]),
+                      str(pca_model.eigenvalues_ratio()),
+                      str(pca_model.eigenvalues_cumulative_ratio())))
         return pca_model
 
     @staticmethod
@@ -291,21 +290,28 @@ class Pipeline:
         Trim number of points for each mesh to be K.
 
         Parameters:
-             meshes (TriMesh): mesh clouds
+             meshes (list): list of TriMesh clouds
              K (int): number of points retained to each mesh,
                 if K > number of points available, pad zeros,
                 otherwise contain only the first K points
 
         Returns:
-            meshes (TriMesh): trimmed meshes
+            meshes (list): list of trimmed meshes
         """
         N = max(meshes, key=lambda x: x.points.shape[0]).points.shape[0]
         if K % 3 != 0:
             K -= K % 3
+        K = int(K)
         print("before trimming on number of points for each mesh, it contains at most {} points\\mesh\n"
               "after trimming, it contains {} points\\mesh"
               .format(N, K))
-        return list(map(lambda x: TriMesh(points=Pipeline._trim_points(x.points, K), trilist=None), meshes))
+        trimmed_meshes = []
+        logger = Logger.ProgressLogger(len(meshes))
+        for x in meshes:
+            logger.log()
+            trimmed_meshes.append(TriMesh(points=Pipeline._trim_points(x.points, K), trilist=None))
+        logger.log()
+        return trimmed_meshes
 
     @staticmethod
     def _trim_points(pts, K):
