@@ -204,8 +204,8 @@ class Pipeline:
         """
         aligned_meshes, training_logs = self.align(input_path)
         aligned_meshes += [self.target]
-        pca_meshes = self.prune_on_num_points(aligned_meshes)
-        lsfm, logs = self.pca_prune(pca_meshes), training_logs
+        #pca_meshes = self.prune_on_num_points(aligned_meshes)
+        lsfm, logs = self.pca_prune(aligned_meshes), training_logs
         return lsfm, logs
 
     def prune_on_num_points(self, aligned_meshes):
@@ -267,6 +267,8 @@ class Pipeline:
         Return:
             PCA model
         """
+        # process mesh files to have the same number of points
+        meshes = self.trim_meshes(meshes, self.max_num_points)
         pca_model = PCAModel(samples=meshes, verbose=self.verbose)
         n_comps_retained = int(sum(pca_model.eigenvalues_cumulative_ratio() < self.n_components)) if \
             self.n_components >= 1 else self.n_components
@@ -282,6 +284,47 @@ class Pipeline:
                           str(pca_model.eigenvalues_ratio()),
                           str(pca_model.eigenvalues_cumulative_ratio())))
         return pca_model
+
+    @staticmethod
+    def trim_meshes(meshes, K):
+        """
+        Trim number of points for each mesh to be K.
+
+        Parameters:
+             meshes (TriMesh): mesh clouds
+             K (int): number of points retained to each mesh,
+                if K > number of points available, pad zeros,
+                otherwise contain only the first K points
+
+        Returns:
+            meshes (TriMesh): trimmed meshes
+        """
+        N = max(meshes, key=lambda x: x.points.shape[0]).points.shape[0]
+        if K % 3 != 0:
+            K -= K % 3
+        print("before trimming on number of points for each mesh, it contains at most {} points\\mesh\n"
+              "after trimming, it contains {} points\\mesh"
+              .format(N, K))
+        return list(map(lambda x: TriMesh(points=Pipeline._trim_points(x.points, K), trilist=None), meshes))
+
+    @staticmethod
+    def _trim_points(pts, K):
+        """
+        Trim number of points for each mesh to be K.
+
+        Parameters:
+            pts (numpy.ndarray): point cloud
+            K (int): number of points retained to each mesh,
+                if K > number of points available, pad zeros,
+                otherwise contain only the first K points.
+
+        Returns:
+            point cloud (numpu.ndarray): point cloud trimmed or padded.
+        """
+        N, M = pts.shape
+        if N >= K:
+            return pts[:K, :]
+        return np.concatenate([pts, np.zeros((K - N, M))])
 
     @staticmethod
     def configuration_check():
