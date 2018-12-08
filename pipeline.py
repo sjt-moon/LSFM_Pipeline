@@ -8,6 +8,7 @@ from sklearn.decomposition import PCA
 from menpo.shape.mesh.base import TriMesh
 from functools import reduce
 import pickle
+from collections import Counter
 import configparser
 
 
@@ -268,7 +269,7 @@ class Pipeline:
             PCA model
         """
         # process mesh files to have the same number of points
-        meshes = self.trim_meshes(meshes, self.max_num_points)
+        meshes = self.analyse_meshes(meshes)
         pca_model = PCAModel(samples=meshes, verbose=self.verbose)
         n_comps_retained = int(sum(pca_model.eigenvalues_cumulative_ratio() < self.n_components)) if \
             self.n_components >= 1 else self.n_components
@@ -283,6 +284,35 @@ class Pipeline:
                       str(pca_model.eigenvalues_ratio()),
                       str(pca_model.eigenvalues_cumulative_ratio())))
         return pca_model
+
+    def analyse_meshes(self, meshes):
+        """
+        Let user select:
+            - use all meshes, each with self.max_num_points points
+            - use the majority of meshes with the same shape
+
+        Parameters:
+            meshes (list): list of TriMesh
+
+        Returns:
+            meshes (list): list of TriMesh processed
+        """
+        counter = Counter()
+        for x in meshes:
+            counter[x.points.shape] += 1
+        most_common_mesh_shape = counter.most_common(1)[0]
+        use_all = None
+        if most_common_mesh_shape[1] != len(meshes):
+            print("meshes have different shapes, the majority shape is {} ({}/{} meshes)"
+                  .format(most_common_mesh_shape[0], most_common_mesh_shape[1], len(meshes)))
+            while use_all is None:
+                user_input = input("use all files(possible distortion for PCA)[a] "
+                                   "or only meshes with shape of {}[b]? [a/b])"
+                                   .format(most_common_mesh_shape[0])).lower().strip()
+                use_all = True if user_input.startswith("a") else False if user_input.startswith("b") else None
+        else:
+            use_all = True
+        return self.trim_meshes(meshes, self.max_num_points) if use_all else self.filter_with_shape(meshes, most_common_mesh_shape[0])
 
     @staticmethod
     def trim_meshes(meshes, K):
@@ -333,6 +363,20 @@ class Pipeline:
         if N >= K:
             return pts[:K, :]
         return np.concatenate([pts, np.zeros((K - N, M))])
+
+    @staticmethod
+    def filter_with_shape(meshes, shape):
+        """
+        Filter out meshes with the given shape.
+
+        Parameters:
+            meshes (list): list of TriMesh
+            shape (tuple): shape to be selected
+
+        Returns:
+            meshes (list): list of TriMesh with given shape
+        """
+        return list(filter(lambda x: x.points.shape == shape, meshes))
 
     @staticmethod
     def configuration_check():

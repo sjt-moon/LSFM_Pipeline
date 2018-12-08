@@ -28,7 +28,4 @@ class ProgressLogger:
         if progress >= self.length:
             add, bias = "", 1
         self.progress_bar = self.progress_bar[:prev_progress+1] + "=" * int(progress - prev_progress) + add + self.progress_bar[progress+bias:]
-        if progress >= self.length:
-            print((self.annotation + self.progress_bar).format(self.cnt, self.total))
-        else:
-            print((self.annotation + self.progress_bar).format(self.cnt, self.total), end="\r", flush=True)
+        print((self.annotation + self.progress_bar).format(self.cnt, self.total), end="\r", flush=True)
