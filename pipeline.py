@@ -270,18 +270,18 @@ class Pipeline:
         """
         # process mesh files to have the same number of points
         meshes = self.analyse_meshes(meshes)
-        pca_model = PCAModel(samples=meshes, verbose=self.verbose)
+
+        pca_model = PCAModel(samples=meshes, verbose=True)
         n_comps_retained = int(sum(pca_model.eigenvalues_cumulative_ratio() < self.n_components)) if \
             self.n_components >= 1 else self.n_components
         if self.verbose:
             print('\nRetaining {:.2%} of eigenvalues keeps {} components'.format(
                 self.n_components, n_comps_retained))
         pca_model.trim_components(self.n_components)
-        print("Final PCA Model:\n# of components: {}\n# of points for each mesh (3 dims total): {}"
-                "\neigen value respective ratios: {}\neigen value accumulative ratios: {}"
+        print("Final PCA Model:\n# of components: {}\n# of points for each mesh (3 dims total): {}\n"
+              "eigen value accumulative ratios: {}"
               .format(str(pca_model.components.shape[0]),
                       str(pca_model.components.shape[1]),
-                      str(pca_model.eigenvalues_ratio()),
                       str(pca_model.eigenvalues_cumulative_ratio())))
         return pca_model
 
@@ -306,13 +306,14 @@ class Pipeline:
             print("meshes have different shapes, the majority shape is {} ({}/{} meshes)"
                   .format(most_common_mesh_shape[0], most_common_mesh_shape[1], len(meshes)))
             while use_all is None:
-                user_input = input("use all files(possible distortion for PCA)[a] "
-                                   "or only meshes with shape of {}[b]? [a/b])"
+                user_input = input("use all files (possible distortion for PCA)[a] "
+                                   "or only meshes with shape of {}[b]? [a/b]"
                                    .format(most_common_mesh_shape[0])).lower().strip()
                 use_all = True if user_input.startswith("a") else False if user_input.startswith("b") else None
         else:
             use_all = True
-        return self.trim_meshes(meshes, self.max_num_points) if use_all else self.filter_with_shape(meshes, most_common_mesh_shape[0])
+        return self.trim_meshes(meshes, self.max_num_points) if use_all \
+            else self.filter_with_shape(meshes, most_common_mesh_shape[0])
 
     @staticmethod
     def trim_meshes(meshes, K):
